@@ -2,11 +2,34 @@
 // Red Pandas - 403 
 // Desc: Goal is to begin a connection when prompted by a user. First, we need access to each connectees camera and mic
 
-// Open a media stream
-async function setupStream(constraints) {
-    return await navigator.mediaDevices.getUserMedia(constraints);
+// Constants
+const localVideo = document.querySelector('#local-video');      // local-video and remote-video are variables that represent HTML 
+const remoteVideo = document.querySelector('#remote-video');    // element ID's
+
+const stunServers = {
+    serverOptions: [{
+        urls: [
+            'stun:stun.l.google.com:19302',
+            'stun:stun1.l.google.com:19302'
+        ]
+    }]
 }
 
+// Variables
+let localStream;
+
+// Get the user media
+async function displayUserMedia(constraints) {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        localVideo.srcObject = stream;
+        localStream = stream;
+        resolve();
+    } catch(err) {
+        console.log(err);
+        reject();
+    }
+}
 
 // Check for and display connected devices 
 function updateDevices(camerasAvailable, micsAvailable) {
@@ -32,12 +55,23 @@ function updateDevices(camerasAvailable, micsAvailable) {
     }).forEach(micOption => micDropdown.add(micOption));
 }
 
-// Listen for device connection or disconnection
+// Create a peer connection using STUN servers
+async function createPeerConnection() {
+    peerConnection = await new RTCPeerConnection(stunServers);
+    remoteStream = new MediaStream();
+    remoteVideo.srcObject = remoteStream;
+
+
+}
+
 
 // Main
-
-
-
-
-//  Documentation:
-//      - camerasAvailable is an array of user cameras created after running open media stream
+function main() {
+    try {
+        const stream = setupStream({'video':true,'audio':true});
+        console.log('Media stream recieved:', stream);
+    } catch {
+        console.error('An error occurred in setupStream', error);
+    }
+    
+}
