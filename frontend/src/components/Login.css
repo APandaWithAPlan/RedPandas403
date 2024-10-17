@@ -1,7 +1,7 @@
 body {
-    background-color: #1a1a1a; /* Dark background color */
-    margin: 0; /* Remove default margin */
-    font-family: Arial, sans-serif; /* Optional: Change font for better appearance */
+    background-color: #1a1a1a; 
+    margin: 0; 
+    font-family: Arial, sans-serif; 
   }
 .login {
     background: linear-gradient(to bottom right, #ecebeb, #353535);
