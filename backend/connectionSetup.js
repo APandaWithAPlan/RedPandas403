@@ -4,7 +4,14 @@
 
 // Constants
 const username = null;
+const password = null;
 
+const socket = io.connect('https://localhost:3000/', {
+    auth: {
+        username: "bbays2024",
+        password: "softwaredesign"
+    }
+})
 
 const localVideo = document.querySelector('#local-video');      // local-video and remote-video are variables that represent HTML 
 const remoteVideo = document.querySelector('#remote-video');    // element ID's
@@ -27,10 +34,10 @@ let peerConnection;
 let amICaller = false;
 
 // Get the user media
-function fetchUserMedia(constraints) {
+function fetchUserMedia(desiredTracks) {
     return new Promise(async(resolve, reject) => {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            const stream = await navigator.mediaDevices.getUserMedia(desiredTracks);
             localVideo.srcObject = stream;
             localStream = stream;
             resolve();
@@ -66,8 +73,9 @@ function updateDevices(camerasAvailable, micsAvailable) {
 }
 
 // Create a peer connection using STUN servers
-async function createPeerConnection() {
-    // start a promise
+async function createPeerConnection(offerObj) {
+    // offerObj will not be passed through when a user initiates a call. This variable
+    // will only exist after some sort of offer has been created.
     return new Promise(async(resolve, reject) => {
         // setup connection to remote variables
         peerConnection = await new RTCPeerConnection(stunServers);
@@ -83,7 +91,7 @@ async function createPeerConnection() {
         peerConnection.addEventListener("icecandidate", (event) => {
             console.log(event);
             if (event.candidate) {
-                socket.emitt('sendIceCandidateToSignalingServer', {
+                socket.emit('sendIceCandidateToSignalingServer', {
                     iceCandidate: event.candidate,
                     iceUserName: username,
                     amICaller
@@ -99,8 +107,13 @@ async function createPeerConnection() {
             } 
         })
 
-
+        resolve();
     })
+}
+
+// add answer description to connection object - last step when creating a connection
+async function addAnswer(offerObj) {
+    await peerConnection.setRemoteDescription(offerObj.answer);
 }
 
 
@@ -126,4 +139,12 @@ async function answerOffer(offerObj) {
     const answer = await peerConnection.createAnswer({});
     await peerConnection.setLocalDescription(answer);
 
+    offerObj.answer = answer;
+
+    const offerIceCandidate = await socket.emitWithAck('newAnswer', offerObj);
+    offerIceCandidate.forEach(candidate => {
+        peerConnection.addIceCandidate(candidate);
+    })
 }
+
+
