@@ -3,8 +3,8 @@
 // Desc: Goal is to begin a connection when prompted by a user. First, we need access to each connectees camera and mic
 
 // Constants
-const username = null;
-const password = null;
+let username = null;
+let password = null;
 
 const socket = io.connect('https://localhost:3000/', {
     auth: {
@@ -116,8 +116,9 @@ async function addAnswer(offerObj) {
     await peerConnection.setRemoteDescription(offerObj.answer);
 }
 
+// INTERACTION FUNCTIONS //
 
-// Main
+// initiate a call and send offer to signaling server
 async function call() {
     await fetchUserMedia(mediaOptions);
     await createPeerConnection();
@@ -133,6 +134,7 @@ async function call() {
     }
 }
 
+// accept a call
 async function answerOffer(offerObj) {
     await fetchUserMedia(mediaOptions);
     await createPeerConnection(offerObj);
@@ -142,9 +144,10 @@ async function answerOffer(offerObj) {
     offerObj.answer = answer;
 
     const offerIceCandidate = await socket.emitWithAck('newAnswer', offerObj);
-    offerIceCandidate.forEach(candidate => {
+
+    for (const candidate of offerIceCandidate) {
         peerConnection.addIceCandidate(candidate);
-    })
+    }
 }
 
 
