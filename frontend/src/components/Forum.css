@@ -10,6 +10,11 @@
     background-color: #333;
 }
 
+.navbar h1 a {
+    color: white !important;  /* Keep the text color white */
+    text-decoration: none !important;  /* Remove the underline */
+}
+
 .search-bar-container {
     display: flex;
     justify-content: center;

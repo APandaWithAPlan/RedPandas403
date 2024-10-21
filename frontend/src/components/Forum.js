@@ -66,7 +66,9 @@ function Forum() {
   return (
     <div className='forum'>
       <nav className="navbar">
-        <h1>Panda Professor</h1>
+        <Link to="/">
+          <h1>Panda Professor</h1>
+        </Link>
         <SearchBar />
         <div className="nav-links">
           <button><Link to="/signup">Go to Signup</Link></button>
