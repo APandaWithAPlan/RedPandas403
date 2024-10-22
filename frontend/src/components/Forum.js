@@ -5,71 +5,55 @@ import './Forum.css';
 function Forum() {
   const [question, setQuestion] = useState('');
   const [image, setImage] = useState(null);
-  const questions = [
-    "How do I install React?",
-    "What is the use of useState in React?",
-    "How to fetch data in React?",
-    "What are React Hooks?",
-    "How do you handle forms in React?",
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredQuestions, setFilteredQuestions] = useState([]);
+  const [searchSubmitted, setSearchSubmitted] = useState(false);
+
+  // Questions and answers data
+  const qaData = [
+    { id: 1, question: "How do I install React?", answer: "You can install React using npm by running: npm install react." },
+    { id: 2, question: "What is the use of useState in React?", answer: "useState is a hook that allows you to add React state to function components." },
+    { id: 3, question: "How to fetch data in React?", answer: "You can fetch data in React using the fetch API or libraries like Axios." },
+    { id: 4, question: "What are React Hooks?", answer: "Hooks are functions that let you 'hook into' React state and lifecycle features in function components." },
+    { id: 5, question: "How do you handle forms in React?", answer: "Forms in React are handled by controlling the input values with state using onChange handlers." },
   ];
 
-  const SearchBar = () => {
-    const [searchTerm, setSearchTerm] = useState('');
-    const handleSearchChange = (e) => {
-      setSearchTerm(e.target.value);
-    };
-    const filteredQuestions = questions.filter((question) =>
-      question.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .slice(0, 5);
-
-    return (
-      <div className="search-bar-container">
-        <input
-          type="text"
-          placeholder="Search for questions..."
-          value={searchTerm}
-          onChange={handleSearchChange}
-          className="search-input"
-        />
-        {searchTerm && (
-          <ul className="dropdown">
-            {filteredQuestions.length > 0 ? (
-              filteredQuestions.map((question, index) => (
-                <li key={index} className="dropdown-item">{question}</li>
-              ))
-            ) : (
-              <li className="dropdown-item">No matching questions found</li>
-            )}
-          </ul>
-        )}
-      </div>
+  // Handle search input change
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    const filtered = qaData.filter((qa) =>
+      qa.question.toLowerCase().includes(e.target.value.toLowerCase())
     );
+    setFilteredQuestions(filtered); 
+    setSearchSubmitted(false); 
   };
 
-  const handleQuestionChange = (e) => {
-    setQuestion(e.target.value);
-  };
-
-  const handleImageChange = (e) => {
-    setImage(e.target.files[0]);
-  };
-
-  const handleSubmit = (e) => {
+  // Handle search form submission
+  const handleSearchSubmit = (e) => {
     e.preventDefault();
-    console.log('Question:', question);
-    console.log('Image:', image);
-    setQuestion('');
-    setImage(null);
+    const filtered = qaData.filter((qa) =>
+      qa.question.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredQuestions(filtered);
+    setSearchSubmitted(true);
+    setSearchTerm(''); 
   };
 
   return (
-    <div className='forum'>
+    <div className="forum">
       <nav className="navbar">
         <Link to="/">
           <h1>Panda Professor</h1>
         </Link>
-        <SearchBar />
+        <form onSubmit={handleSearchSubmit} className="search-bar-container">
+          <input
+            type="text"
+            placeholder="Search for questions..."
+            value={searchTerm}
+            onChange={handleSearchChange}
+            className="search-input"
+          />
+        </form>
         <div className="nav-links">
           <button><Link to="/signup">Go to Signup</Link></button>
           <button><Link to="/login">Go to Login</Link></button>
@@ -77,31 +61,46 @@ function Forum() {
       </nav>
 
       <div className="content">
-        <h2>Submit Your Question or Image</h2>
-        <form onSubmit={handleSubmit} className="submission-form">
-          <div className="form-group">
-            <label htmlFor="question">Question:</label>
-            <textarea
-              id="question"
-              value={question}
-              onChange={handleQuestionChange}
-              placeholder="Type your question here..."
-              required
-              className="textarea"
-            />
+        {!searchSubmitted && (
+          <div>
+            <h2>Submit Your Question or Image</h2>
+            <form className="submission-form">
+              <div className="form-group">
+                <label htmlFor="question">Question:</label>
+                <textarea
+                  id="question"
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  placeholder="Type your question here..."
+                  required
+                  className="textarea"
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="image">Upload an image (optional):</label>
+                <input
+                  type="file"
+                  id="image"
+                  accept="image/*"
+                  onChange={(e) => setImage(e.target.files[0])}
+                  className="file-input"
+                />
+              </div>
+              <button type="submit" className="submit-btn">Submit</button>
+            </form>
           </div>
-          <div className="form-group">
-            <label htmlFor="image">Upload an image (optional):</label>
-            <input
-              type="file"
-              id="image"
-              accept="image/*"
-              onChange={handleImageChange}
-              className="file-input"
-            />
+        )}
+
+        {searchSubmitted && filteredQuestions.length > 0 && (
+          <div className="search-results">
+            {filteredQuestions.map((qa) => (
+              <div key={qa.id} className="search-result-item">
+                <h3>Q: <Link to={`/question/${qa.id}`}>{qa.question}</Link></h3>
+                <p>A: <span className="view-answer">See answer</span></p>
+              </div>
+            ))}
           </div>
-          <button type="submit" className="submit-btn">Submit</button>
-        </form>
+        )}
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import Homepage from './components/Homepage';
 import Signup from './components/Signup';
 import Login from './components/Login';
 import Forum from './components/Forum';
+import QuestionPage from './components/QuestionPage';
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/login" element={<Login />} />
         <Route path="/forum" element={<Forum/>} />
+        <Route path="/question/:id" element={<QuestionPage />} />
       </Routes>
     </Router>
   );
