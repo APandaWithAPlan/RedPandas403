@@ -1,7 +1,6 @@
 const express = require('express');
 const { Pool } = require('pg');
 const app = express();
-const port = 3001;
 
 // Create a connection pool to the Postgres database
 const pool = new Pool({
@@ -25,7 +24,4 @@ app.get('/api/data', async (req, res) => {
   }
 });
 
-// Start the server
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+module.exports = app;  // No app.listen() needed
