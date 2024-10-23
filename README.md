@@ -11,3 +11,7 @@ A live-streaming web application to match students with a verified tutor.
 - Secure Hosting on Frontend/Backend: The frontend is hosted on a trusted hosting provider that allows both security and reliability. The backend, being hosted on a dedicated server features automatic restarts upon crashes and powerlosses to ensure for optimal uptime for the clients whom are paying to use our service.  The frontend is being hosted off of the React framework and the backend is working through Django.
 
 - User Verification: User data is pushed through data base, while creating a unique verification token. Users name, email, and verification token are then pushed to a python code that generates a verification URL using token and sends using a SMTP Relay. Once link is clicked user is redirected to login page and marked as verified in database and sets the verification token value to null. Finally user recieves a success email.
+
+
+
+ignore this push, just testing if autocompile works
