@@ -6,6 +6,7 @@ import Signup from './components/Signup';
 import Login from './components/Login';
 import Forum from './components/Forum';
 import QuestionPage from './components/QuestionPage';
+import AdminDashboard from './components/AdminDashboard';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/forum" element={<Forum/>} />
         <Route path="/question/:id" element={<QuestionPage />} />
+        <Route path="/admin/*" element={<AdminDashboard />} />
       </Routes>
     </Router>
   );
