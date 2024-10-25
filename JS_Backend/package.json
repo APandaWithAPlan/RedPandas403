@@ -10,9 +10,11 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
-    "@vercel/node": "^3.2.23"
+    "@vercel/node": "^3.2.23",
+    "supabase": "^1.207.9"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.45.6",
     "supabase": "^1.207.9"
   }
 }
