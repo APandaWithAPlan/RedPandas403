@@ -10,11 +10,13 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
-    "@vercel/node": "^3.2.23",
+    "@vercel/node": "^2.10.3",
     "supabase": "^1.207.9"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.6",
-    "supabase": "^1.207.9"
+    "signal-exit": "^4.1.0",
+    "supabase": "^1.207.9",
+    "whatwg-url": "^14.0.0"
   }
 }
