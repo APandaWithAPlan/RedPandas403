@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, version } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
+import { v4 as uuidv4 } from 'uuid';
 import './Signup.css';
 
 // Use environment variables for Supabase URL and anon key
@@ -34,6 +35,7 @@ const Signup = () => {
 
       try {
           const hashedPassword = await bcrypt.hash(password, 10);
+          const verificationToken = uuidv4();
           const { error } = await supabase
               .from('users')
               .insert([
@@ -44,22 +46,41 @@ const Signup = () => {
                       email,
                       password: hashedPassword,
                       verified: false,
-                      verification_token: 'some_generated_token'
+                      verification_token: verificationToken
                   }
               ]);
 
           if (error) {
               setErrorMessage(error.message || 'Account creation failed.');
           } else {
-              setSuccessMessage('Account created successfully! Please check your email to verify your account.');
-              setTimeout(() => navigate('/login'), 3000);
+                await sendVerificationEmail(email, verificationToken)
+
+                setSuccessMessage('Account created successfully! Please check your email to verify your account.');
+                setTimeout(() => navigate('/login'), 3000);
           }
       } catch (error) {
           setErrorMessage('An error occurred. Please try again.');
       } finally {
           setLoading(false);
       }
-  };
+    };
+
+    const sendVerificationEmail = async (email, token) => {
+        const response = await fetch('/api/sendVerificationEmail', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ receiverEmail: email, verificationToken: token }),
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to send verification email');
+        }
+
+        const data = await response.json();
+        console.log(data.message);
+    };
 
   return (
       <div className="signup">
