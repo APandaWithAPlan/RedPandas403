@@ -1,15 +1,18 @@
 import React from 'react';
-import { Link, Routes, Route } from 'react-router-dom';
+import { Link, Routes, Route, useNavigate } from 'react-router-dom';
 import UserVerification from './UserVerification';
 import ReportedPosts from './ReportedPosts';
 import ReportedUsers from './ReportedUsers';
-import './AdminDashboard.css'; // Ensure you create this CSS file
+import './AdminDashboard.css';
 
 function AdminDashboard() {
+  const navigate = useNavigate(); // Initialize the navigate function
+
   return (
     <div className="admin-dashboard">
       <nav className="sidebar">
         <h2>Admin Settings</h2>
+        <button className="back-button" onClick={() => navigate(-1)}>Back</button> {/* Back button */}
         <ul>
           <li><Link to="/admin/user-verification">User Verification Status</Link></li>
           <li><Link to="/admin/reported-posts">Reported Posts</Link></li>

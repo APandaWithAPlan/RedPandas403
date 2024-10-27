@@ -1,22 +1,45 @@
+// src/components/Homepage.js
 import { Link, useNavigate } from 'react-router-dom';
 import React, { useState } from 'react';
-import './Homepage.css'
+import { useUser } from './UserContext';
+import './Homepage.css';
 
 function Homepage() {
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const { user, logout } = useUser();
 
   const toggleDropdown = () => {
     setDropdownOpen(!dropdownOpen);
   };
 
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
+
   return (
-    <div className='homepage'>
+    <div className="homepage">
       <nav className="navbar">
         <h1>Panda Professor</h1>
         <div className="nav-links">
-          <button><Link to="/signup">Go to Signup</Link></button>
-          <button><Link to="/login">Go to Login</Link></button>
+          {user ? (
+            <div className="profile-dropdown">
+              <button onClick={toggleDropdown} className="profile-button">Profile</button>
+              {dropdownOpen && (
+                <div className="dropdown-content">
+                  <button onClick={() => navigate('/profile')}>View Profile</button>
+                  <button onClick={() => navigate('/admin')}>Admin Dashboard</button> {/* Link to Admin Dashboard */}
+                  <button onClick={handleLogout}>Logout</button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              <button><Link to="/signup">Go to Signup</Link></button>
+              <button><Link to="/login">Go to Login</Link></button>
+            </>
+          )}
         </div>
       </nav>
       <div className="content">
