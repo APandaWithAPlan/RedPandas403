@@ -1,0 +1,55 @@
+body {
+  background-color: #1a1a1a; /* Keep the dark background */
+  margin: 0; /* Remove default margin */
+  font-family: Arial, sans-serif; /* Consistent font across both forms */
+}
+
+.signup {
+  background: linear-gradient(to bottom right, #ecebeb, #353535); /* Match the gradient background */
+  padding: 20px; /* Same padding as the login form */
+  border-radius: 8px; /* Match border radius */
+  max-width: 400px; /* Same max width */
+  margin: 50px auto; /* Center the form */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Consistent shadow */
+}
+
+.signup h1 {
+  text-align: center; /* Center the header */
+  color: #333; /* Darker color for the header */
+}
+
+.signup label {
+  display: block; /* Labels above inputs */
+  margin-bottom: 5px; /* Space between label and input */
+  color: #555; /* Consistent label color */
+}
+
+.signup input {
+  width: 95%; /* Same width as the login form */
+  padding: 10px; /* Match input padding */
+  margin-bottom: 15px; /* Space below inputs */
+  border: 1px solid #ccc; /* Light gray border */
+  border-radius: 4px; /* Match border radius */
+  font-size: 16px; /* Consistent font size */
+}
+
+.signup button {
+  width: 100%; /* Full width for button */
+  padding: 10px; /* Match button padding */
+  background-color: #22d81b; /* Bright green */
+  color: white; /* White text */
+  border: none; /* No border */
+  border-radius: 4px; /* Rounded corners */
+  cursor: pointer; /* Pointer cursor on hover */
+  font-size: 16px; /* Consistent font size */
+  transition: background-color 0.3s; /* Smooth transition */
+}
+
+.signup button:hover {
+  background-color: #12611f; /* Darker green on hover */
+}
+
+.signup p {
+  text-align: center; /* Centered text for the link */
+  color: #aaa; /* Lighter color for the link */
+}
