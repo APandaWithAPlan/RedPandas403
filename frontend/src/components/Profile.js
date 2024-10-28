@@ -62,7 +62,7 @@ const Profile = () => {
             // Update the password in the database
             const { error } = await supabase
                 .from('users')
-                .update({ password: newPassword })
+                .update({ password: hashedPassword })
                 .eq('id', user.id);
 
             if (error) {
