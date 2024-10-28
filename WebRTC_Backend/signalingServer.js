@@ -49,7 +49,9 @@ io.on('connection', (socket) => {
     })
 
     // emit any available offers
-
+    if (offers.length){
+        socket.emit('availableOffers', offers);
+    }
 
     // push any offers to the callee
     socket.on('newOffer', (newOffer) =>{
