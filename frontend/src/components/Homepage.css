@@ -1,56 +1,101 @@
+/* src/components/Homepage.css */
+
 .homepage {
-  background-color: #1d1d1d; 
+  background-color: #1d1d1d;
   height: 100vh;
 }
 
-  .navbar { 
-    background-color: #2c2c2c; 
-    color: white; 
-    padding: 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-  }
-  
-  .nav-links button {
-    background-color: red; 
-    color: white; 
-    border: none;
-    padding: 10px 15px;
-    margin-left: 10px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-  }
-  
-  .nav-links button:hover {
-    background-color: darkred; 
-  }
-  
-  .nav-links a {
-    text-decoration: none; 
-    color: white; 
-  }
-  .content {
-    text-align: center; 
-    margin-top: 30px; 
-    color: white; 
-  }
-  
-  .get-started {
-    background-color: red;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 10px 20px;
-    cursor: pointer;
-    font-size: 16px;
-    transition: background-color 0.3s;
-  }
-  
-  .get-started:hover {
-    background-color: darkred; 
-  }
-  
+.navbar {
+  background-color: #2c2c2c;
+  color: white;
+  padding: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.nav-links button {
+  background-color: red;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  margin-left: 10px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.nav-links button:hover {
+  background-color: darkred;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: white;
+}
+
+.content {
+  text-align: center;
+  margin-top: 30px;
+  color: white;
+}
+
+.get-started {
+  background-color: red;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s;
+}
+
+.get-started:hover {
+  background-color: darkred;
+}
+
+/* Profile Dropdown Styling */
+.profile-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.profile-button {
+  background-color: red;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  cursor: pointer;
+}
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background-color: white;
+  box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.2);
+  padding: 12px 16px;
+  right: 0;
+  z-index: 1;
+}
+
+.profile-dropdown:hover .dropdown-content {
+  display: block;
+}
+
+.dropdown-content button {
+  background: none;
+  border: none;
+  color: black;
+  cursor: pointer;
+  padding: 8px 0;
+  display: block;
+  width: 100%;
+  text-align: left;
+}
+
+.dropdown-content button:hover {
+  color: red;
+}
