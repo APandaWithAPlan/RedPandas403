@@ -16,12 +16,17 @@ function QuestionPage() {
   const [answers, setAnswers] = useState([]);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportType, setReportType] = useState('');
+  const [reportPostId, setReportPostId] = useState(null);
+  const [reportTitle, setReportTitle] = useState('');
+  const [reportDescription, setReportDescription] = useState('');
 
   useEffect(() => {
     const fetchQuestionAndAnswers = async () => {
       setLoading(true);
 
-      // Fetch the question data
       const { data: questionData, error: questionError } = await supabase
         .from('questions')
         .select('*')
@@ -34,7 +39,6 @@ function QuestionPage() {
       } else {
         setQuestion(questionData);
 
-        // Fetch associated answers with user info
         const { data: answersData, error: answersError } = await supabase
           .from('answers')
           .select('id, answer, created_at, user_id, users (username)')
@@ -53,25 +57,19 @@ function QuestionPage() {
     fetchQuestionAndAnswers();
   }, [id]);
 
-  const handleAnswerChange = (e) => {
-    setAnswer(e.target.value);
-  };
-
   const handleAnswerSubmit = async (e) => {
     e.preventDefault();
-
     if (!user) {
       alert('You must be logged in to submit an answer.');
       return;
     }
-
     const { data, error } = await supabase
       .from('answers')
       .insert([
         {
           question_id: id,
           answer: answer,
-          user_id: user.id, // Use the logged-in user's ID
+          user_id: user.id,
         },
       ])
       .select('id, answer, created_at, user_id, users (username)')
@@ -81,7 +79,38 @@ function QuestionPage() {
       console.error('Error submitting answer:', error);
     } else {
       setAnswers((prevAnswers) => [...prevAnswers, data]);
-      setAnswer(''); // Clear the input field after submission
+      setAnswer('');
+    }
+  };
+
+  const openReportModal = (postId, type) => {
+    setReportPostId(postId);
+    setReportType(type);
+    setIsReportModalOpen(true);
+  };
+
+  const handleReportSubmit = async () => {
+    if (!user) {
+      alert('You must be logged in to report a post.');
+      return;
+    }
+    const { error } = await supabase
+      .from('reported_posts')
+      .insert({
+        post_id: reportPostId,
+        post_type: reportType,
+        reported_by: user.id,
+        title: reportTitle,
+        description: reportDescription,
+      });
+
+    if (error) {
+      console.error('Error submitting report:', error);
+    } else {
+      setIsReportModalOpen(false);
+      setReportTitle('');
+      setReportDescription('');
+      alert('Report submitted successfully.');
     }
   };
 
@@ -93,11 +122,12 @@ function QuestionPage() {
       <Link to="/forum" className="back-link">← Back to questions</Link>
       <h2>{question?.question}</h2>
       <p>{question?.answer || "This question does not have an answer yet."}</p>
+      <button onClick={() => openReportModal(question.id, 'question')}>Report Question</button>
 
       <form onSubmit={handleAnswerSubmit} className="response-form">
         <textarea
           value={answer}
-          onChange={handleAnswerChange}
+          onChange={(e) => setAnswer(e.target.value)}
           placeholder="Write your answer..."
           required
           className="textarea"
@@ -107,19 +137,37 @@ function QuestionPage() {
 
       <div className="responses-section">
         <h3>Answers:</h3>
-        {answers.length > 0 ? (
-          answers.map((ans) => (
-            <div key={ans.id} className="response-item">
-              <p>
-                <strong>{ans.users?.username || 'Anonymous'}:</strong> {ans.answer}
-              </p>
-              <small>{new Date(ans.created_at).toLocaleString()}</small>
-            </div>
-          ))
-        ) : (
-          <p>No answers yet.</p>
-        )}
+        {answers.map((ans) => (
+          <div key={ans.id} className="response-item">
+            <p><strong>{ans.users?.username || 'Anonymous'}:</strong> {ans.answer}</p>
+            <button onClick={() => openReportModal(ans.id, 'answer')}>Report Answer</button>
+            <small>{new Date(ans.created_at).toLocaleString()}</small>
+          </div>
+        ))}
       </div>
+
+      {isReportModalOpen && (
+        <div className="modal">
+          <div className="modal-content">
+            <h3>Report {reportType === 'question' ? 'Question' : 'Answer'}</h3>
+            <label>Title:</label>
+            <input
+              type="text"
+              value={reportTitle}
+              onChange={(e) => setReportTitle(e.target.value)}
+              required
+            />
+            <label>Description:</label>
+            <textarea
+              value={reportDescription}
+              onChange={(e) => setReportDescription(e.target.value)}
+              required
+            />
+            <button onClick={handleReportSubmit}>Report</button>
+            <button onClick={() => setIsReportModalOpen(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
