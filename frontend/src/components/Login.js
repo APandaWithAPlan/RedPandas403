@@ -6,10 +6,11 @@ import bcrypt from 'bcryptjs';
 import { useUser } from './UserContext'; // Import UserContext
 import './Login.css';
 
-const supabaseUrl = 'https://ohkvsyqbngdukvqihemh.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oa3ZzeXFibmdkdWt2cWloZW1oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk3MTc5NjgsImV4cCI6MjA0NTI5Mzk2OH0.pw9Ffn_gHRr4shp9V-DgisvdqneBHeUZSmvQ61_ES5Q';
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = createClient(
+    process.env.REACT_APP_SUPABASE_URL,
+    process.env.REACT_APP_SUPABASE_ANON_KEY
+  );
+  
 
 function Login() {
     const [username, setUsername] = useState('');

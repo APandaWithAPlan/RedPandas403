@@ -6,13 +6,11 @@ import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import './Signup.css';
 
-// Temporarily hardcoded Supabase credentials
-const supabaseUrl = 'https://ohkvsyqbngdukvqihemh.supabase.co'; // Replace with your actual Supabase URL
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oa3ZzeXFibmdkdWt2cWloZW1oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk3MTc5NjgsImV4cCI6MjA0NTI5Mzk2OH0.pw9Ffn_gHRr4shp9V-DgisvdqneBHeUZSmvQ61_ES5Q'; // Replace with your actual Supabase anon key
-
-// Initialize Supabase client with hardcoded values
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
+const supabase = createClient(
+    process.env.REACT_APP_SUPABASE_URL,
+    process.env.REACT_APP_SUPABASE_ANON_KEY
+  );
+  
 const Signup = () => {
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');

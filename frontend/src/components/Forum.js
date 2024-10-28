@@ -4,10 +4,10 @@ import { createClient } from '@supabase/supabase-js';
 import { useUser } from './UserContext'; // Import the useUser hook
 import './Forum.css';
 
-const supabaseUrl = 'https://ohkvsyqbngdukvqihemh.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oa3ZzeXFibmdkdWt2cWloZW1oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk3MTc5NjgsImV4cCI6MjA0NTI5Mzk2OH0.pw9Ffn_gHRr4shp9V-DgisvdqneBHeUZSmvQ61_ES5Q'; // Make sure to keep this secure
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = createClient(
+  process.env.REACT_APP_SUPABASE_URL,
+  process.env.REACT_APP_SUPABASE_ANON_KEY
+);
 
 function Forum() {
   const { user } = useUser(); // Access user from context
