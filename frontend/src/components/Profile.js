@@ -15,8 +15,6 @@ const supabase = createClient(
 const Profile = () => {
     const { user, login, logout, setUser } = useUser(); // Access setUser from context
     const navigate = useNavigate();
-    const [lastResendTime, setLastResendTime] = useState(null); // Stores last resend timestamp
-    const cooldownTime = 5 * 60 * 1000;
     const changeUsername = async (newUsername) => {
         if (user) {
             // update the UI
@@ -80,14 +78,6 @@ const Profile = () => {
     }
 
     const resendVerificationEmail = async () => {
-        const currentTime = new Date().getTime();
-        
-        if (lastResendTime && currentTime - lastResendTime < cooldownTime) {
-            const waitTime = Math.ceil((cooldownTime - (currentTime - lastResendTime)) / 1000);
-            alert(`Please wait ${Math.floor(waitTime / 60)} minutes and ${waitTime % 60} seconds before requesting again.`);
-            return;
-        }
-
         if (user && user.email) {
             try {
                 const response = await fetch('/api/sendVerificationEmail', {
@@ -101,7 +91,6 @@ const Profile = () => {
     
                 if (response.ok) {
                     console.log('Verification email resent successfully');
-                    setLastResendTime(currentTime);
                 } else {
                     console.error('Failed to resend verification email:', await response.json());
                 }
