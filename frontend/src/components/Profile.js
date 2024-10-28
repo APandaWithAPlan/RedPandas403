@@ -13,6 +13,7 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const Profile = () => {
     const { user, login, logout, setUser } = useUser(); // Access setUser from context
+    const navigate = useNavigate();
     const changeUsername = async (newUsername) => {
         if (user) {
             // update the UI
@@ -75,6 +76,30 @@ const Profile = () => {
         }
     }
 
+    const resendVerificationEmail = async () => {
+        if (user && user.email) {
+            try {
+                const response = await fetch('/api/sendVerificationEmail', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        receiverEmail: user.email,
+                        verificationToken: user.verification_token // Assuming this is available in `user`
+                    }),
+                });
+    
+                if (response.ok) {
+                    console.log('Verification email resent successfully');
+                } else {
+                    console.error('Failed to resend verification email:', await response.json());
+                }
+            } catch (error) {
+                console.error('Error resending verification email:', error);
+            }
+        }
+    };
+    
+
         
     
 
@@ -114,8 +139,12 @@ const Profile = () => {
                         Change Password
                     </button>
 
+                    <button onClick={resendVerificationEmail}>Resend Verification</button>
+
 
                     <button onClick={logout}>Log out</button>
+
+                    <button onClick={() => navigate(-1)}>Back</button>
                 </>
             ) : 
             
