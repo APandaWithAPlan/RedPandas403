@@ -9,8 +9,8 @@ app.use(express.static(__dirname));
 
 // HTTPS keys needed 
 const serverAccess = {
-    key: fs.readFileSync('localhost-key.pem'),                  // TODO: find the actual file names
-    cert: fs.readFileSync('localhost.pem')
+    key: fs.readFileSync('cert.key'),                  // TODO: find the actual file names
+    cert: fs.readFileSync('cert.crt')
 };
 
 // Servers
@@ -49,7 +49,9 @@ io.on('connection', (socket) => {
     })
 
     // emit any available offers
-
+    if (offers.length){
+        socket.emit('availableOffers', offers);
+    }
 
     // push any offers to the callee
     socket.on('newOffer', (newOffer) =>{
