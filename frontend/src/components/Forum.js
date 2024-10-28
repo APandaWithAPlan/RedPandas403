@@ -5,8 +5,7 @@ import { useUser } from './UserContext'; // Import the useUser hook
 import './Forum.css';
 
 const supabaseUrl = 'https://ohkvsyqbngdukvqihemh.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oa3ZzeXFibmdkdWt2cWloZW1oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk3MTc5NjgsImV4cCI6MjA0NTI5Mzk2OH0.pw9Ffn_gHRr4shp9V-DgisvdqneBHeUZSmvQ61_ES5Q'; // Make sure to keep this secure
-
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oa3ZzeXFibmdkdWt2cWloZW1oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk3MTc5NjgsImV4cCI6MjA0NTI5Mzk2OH0.pw9Ffn_gHRr4shp9V-DgisvdqneBHeUZSmvQ61_ES5Q';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 function Forum() {
@@ -18,6 +17,10 @@ function Forum() {
   const [searchSubmitted, setSearchSubmitted] = useState(false);
   const [qaData, setQaData] = useState([]);
   const navigate = useNavigate();
+
+  const handleNavigateHome = () => {
+    navigate('/'); // Navigate to the homepage
+  };
 
   // Fetch questions from Supabase
   useEffect(() => {
@@ -60,7 +63,7 @@ function Forum() {
     e.preventDefault();
     if (!user) {
       alert('You must be logged in to submit a question.');
-      return navigate('/login'); // Redirect to login if not logged in
+      return navigate('/login');
     }
 
     const { error } = await supabase
@@ -68,8 +71,8 @@ function Forum() {
       .insert([
         {
           question,
-          user_id: user.id, // Use the user ID from context
-          image_url: image ? await uploadImage(image) : null, // Optionally upload image
+          user_id: user.id, 
+          image_url: image ? await uploadImage(image) : null, 
         },
       ]);
 
@@ -79,7 +82,7 @@ function Forum() {
       alert('Question submitted successfully!');
       setQuestion('');
       setImage(null);
-      setQaData((prev) => [...prev, { question, user_id: user.id }]); // Update local state
+      setQaData((prev) => [...prev, { question, user_id: user.id }]);
     }
   };
 
@@ -96,9 +99,7 @@ function Forum() {
   return (
     <div className="forum">
       <nav className="navbar">
-        <Link to="/">
-          <h1>Panda Professor</h1>
-        </Link>
+        <h1 onClick={handleNavigateHome} className="navbar-title">Panda Professor</h1>
         <form onSubmit={handleSearchSubmit} className="search-bar-container">
           <input
             type="text"
@@ -109,58 +110,76 @@ function Forum() {
           />
         </form>
         <div className="nav-links">
-          <button><Link to="/signup">Go to Signup</Link></button>
-          <button><Link to="/login">Go to Login</Link></button>
+          {user ? (
+            <>
+              <button><Link to="/profile">Profile</Link></button>
+              <button><Link to="/logout">Logout</Link></button>
+            </>
+          ) : (
+            <>
+              <button><Link to="/signup">Sign Up</Link></button>
+              <button><Link to="/login">Login</Link></button>
+            </>
+          )}
         </div>
       </nav>
 
-      <div className="content">
-        {!searchSubmitted && (
-          <div>
-            <h2>Submit Your Question or Image</h2>
-            {user ? (
-              <form onSubmit={handleQuestionSubmit} className="submission-form">
-                <div className="form-group">
-                  <label htmlFor="question">Question:</label>
-                  <textarea
-                    id="question"
-                    value={question}
-                    onChange={(e) => setQuestion(e.target.value)}
-                    placeholder="Type your question here..."
-                    required
-                    className="textarea"
-                  />
+      <div className="forum-content">
+        <div className="questions-section">
+          {searchSubmitted && filteredQuestions.length > 0 ? (
+            <div className="search-results">
+              {filteredQuestions.map((qa) => (
+                <div key={qa.id} className="search-result-item">
+                  <h3>Q: <Link to={`/question/${qa.id}`}>{qa.question}</Link></h3>
+                  <p>A: <span className="view-answer">See answer</span></p>
                 </div>
-                <div className="form-group">
-                  <label htmlFor="image">Upload an image (optional):</label>
-                  <input
-                    type="file"
-                    id="image"
-                    accept="image/*"
-                    onChange={(e) => setImage(e.target.files[0])}
-                    className="file-input"
-                  />
+              ))}
+            </div>
+          ) : (
+            <div>
+              {qaData.map((qa) => (
+                <div key={qa.id} className="search-result-item">
+                  <h3>Q: <Link to={`/question/${qa.id}`}>{qa.question}</Link></h3>
+                  <p>A: <span className="view-answer">See answer</span></p>
                 </div>
-                <button type="submit" className="submit-btn">Submit</button>
-              </form>
-            ) : (
-              <div>
-                <p>You must be logged in to submit a question. Please <Link to="/login">log in</Link>.</p>
-              </div>
-            )}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
 
-        {searchSubmitted && filteredQuestions.length > 0 && (
-          <div className="search-results">
-            {filteredQuestions.map((qa) => (
-              <div key={qa.id} className="search-result-item">
-                <h3>Q: <Link to={`/question/${qa.id}`}>{qa.question}</Link></h3>
-                <p>A: <span className="view-answer">See answer</span></p>
+        <div className="submission-section">
+          <h2>Submit a New Question</h2>
+          {user ? (
+            <form onSubmit={handleQuestionSubmit} className="submission-form">
+              <div className="form-group">
+                <label htmlFor="question">Question:</label>
+                <textarea
+                  id="question"
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  placeholder="Type your question here..."
+                  required
+                  className="textarea"
+                />
               </div>
-            ))}
-          </div>
-        )}
+              <div className="form-group">
+                <label htmlFor="image">Upload an image (optional):</label>
+                <input
+                  type="file"
+                  id="image"
+                  accept="image/*"
+                  onChange={(e) => setImage(e.target.files[0])}
+                  className="file-input"
+                />
+              </div>
+              <button type="submit" className="submit-btn">Submit</button>
+            </form>
+          ) : (
+            <div>
+              <p>You must be logged in to submit a question. Please <Link to="/login">log in</Link>.</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
