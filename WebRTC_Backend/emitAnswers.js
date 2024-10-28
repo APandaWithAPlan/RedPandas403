@@ -4,6 +4,11 @@ socket.on('newOfferAwaiting', (offers) => {
     // call answer button function
 })
 
+socket.on('availableOffers', offers => {
+    console.log(offers)
+    // call answer button function
+})
+
 socket.on('answerResponse', offerObj => {
     addAnswer(offerObj);
 })
