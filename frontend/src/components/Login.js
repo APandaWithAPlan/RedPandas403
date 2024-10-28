@@ -47,6 +47,12 @@ function Login() {
             }
 
             // Set user in context and navigate to homepage
+
+            //check to see if user is verified before logging in
+            if (!user.verified) {
+                setErrorMessage('User not verified. Please check your email for verification link.');
+                return;
+            }
             login(user); // Store user data in context
             setErrorMessage('');
             setLoading(false);
