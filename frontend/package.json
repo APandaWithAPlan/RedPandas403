@@ -7,12 +7,14 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@craco/craco": "^7.1.0",
     "@supabase/supabase-js": "^2.45.6",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
     "@vercel/postgres": "^0.10.0",
     "bcryptjs": "^2.4.3",
+    "crypto-browserify": "^3.12.1",
     "express": "^4.21.1",
     "pg": "^8.13.0",
     "react": "^18.3.1",
@@ -20,6 +22,7 @@
     "react-router-dom": "^6.26.2",
     "react-scripts": "5.0.1",
     "signal-exit": "^4.1.0",
+    "stream-browserify": "^3.0.0",
     "supabase": "^1.207.9",
     "web-vitals": "^2.1.4",
     "whatwg-url": "^14.0.0"

@@ -6,8 +6,10 @@ import Homepage from './components/Homepage';
 import Signup from './components/Signup';
 import Login from './components/Login';
 import Forum from './components/Forum';
+import Profile from './components/Profile';
 import QuestionPage from './components/QuestionPage';
 import AdminDashboard from './components/AdminDashboard';
+
 
 function App() {
   return (
@@ -20,6 +22,7 @@ function App() {
           <Route path="/forum" element={<Forum />} />
           <Route path="/question/:id" element={<QuestionPage />} />
           <Route path="/admin/*" element={<AdminDashboard />} />
+          <Route path="/profile" element={<Profile  />} />
         </Routes>
       </Router>
     </UserProvider>
