@@ -5,13 +5,16 @@
     z-index: 100;
     display: flex;
     justify-content: space-between;
-    padding: 10px;
+    align-items: center;
+    padding: 10px 20px;
     background-color: #333;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 .navbar h1 a {
-    color: white !important;
+    color: #b0c4de !important; /* Light Steel Blue */
     text-decoration: none !important;
+    font-size: 1.5rem;
 }
 
 .search-bar-container {
@@ -22,12 +25,13 @@
 }
 
 .search-input {
-    padding: 10px;
+    padding: 10px 15px;
     width: 100%;
     border-radius: 25px;
-    border: none;
+    border: 1px solid #444;
     outline: none;
     font-size: 1rem;
+    color: #333;
     max-width: 500px;
 }
 
@@ -47,6 +51,7 @@
     box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
     padding: 0;
     z-index: 10;
+    border-radius: 8px;
 }
 
 .dropdown-item {
@@ -55,6 +60,7 @@
     cursor: pointer;
     color: #000;
     background-color: #fff;
+    transition: background-color 0.2s;
 }
 
 .dropdown-item:hover {
@@ -65,9 +71,25 @@
     border-bottom: none;
 }
 
-/* Search Results List */
-.search-results {
+/* Forum Layout */
+.forum-content {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
     padding: 20px;
+    max-width: 1200px;
+    margin: auto;
+}
+
+/* Questions Section */
+.questions-section {
+    background-color: #222;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.search-results {
+    padding: 10px;
 }
 
 .search-result-item {
@@ -98,6 +120,69 @@
 .view-answer {
     color: #0066cc;
     cursor: pointer;
+    font-weight: bold;
+}
+
+/* Submission Section */
+.submission-section {
+    background-color: #333;
+    padding: 20px;
+    border-radius: 8px;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+    max-width: 400px; /* Ensures the form doesn't exceed the container */
+    margin: auto; /* Centers the form horizontally */
+}
+
+.submission-section h2 {
+    color: #b0c4de; /* Light Steel Blue */
+    font-size: 1.3rem;
+    margin-bottom: 15px;
+}
+
+.submission-form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.form-group {
+    width: 100%; /* Keeps the form group aligned */
+    margin-bottom: 15px;
+}
+
+.textarea, .file-input {
+    width: 100%; /* Ensures inputs don't exceed container width */
+    max-width: 100%; /* Prevents inputs from overflowing */
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #444;
+    color: #333;
+    font-size: 1rem;
+    outline: none;
+    background-color: #fff;
+    box-sizing: border-box;
+}
+
+.submit-btn {
+    width: 100%; /* Button spans the full width of form */
+    padding: 10px 0;
+    background-color: #f44336;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    font-weight: bold;
+    text-align: center;
+}
+
+.submit-btn:hover {
+    background-color: #d73b30;
 }
 
 /* Answer and Response Section */
@@ -109,28 +194,4 @@
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     max-width: 800px;
     margin: 20px auto;
-}
-
-.textarea {
-    width: 100%;
-    max-width: 600px;
-    height: 100px;
-    padding: 10px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-    margin-top: 20px;
-}
-
-.submit-btn {
-    margin-top: 10px;
-    padding: 10px 20px;
-    background-color: #f44336;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.submit-btn:hover {
-    background-color: #d73b30;
 }

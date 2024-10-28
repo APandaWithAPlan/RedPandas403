@@ -1,62 +1,171 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import './QuestionPage.css'; // Ensure this file exists and is correctly linked
+import { createClient } from '@supabase/supabase-js';
+import { useUser } from './UserContext';
+import './QuestionPage.css';
 
-// Sample question data (replace this with dynamic data if applicable)
-const qaData = [
-  { id: 1, question: "How do I install React?", answer: "You can install React using npm by running: npm install react." },
-  { id: 2, question: "What is the use of useState in React?", answer: "useState is a hook that allows you to add React state to function components." },
-  { id: 3, question: "How to fetch data in React?", answer: "You can fetch data in React using the fetch API or libraries like Axios." },
-  { id: 4, question: "What are React Hooks?", answer: "Hooks are functions that let you 'hook into' React state and lifecycle features in function components." },
-  { id: 5, question: "How do you handle forms in React?", answer: "Forms in React are handled by controlling the input values with state using onChange handlers." },
-];
+const supabaseUrl = 'https://ohkvsyqbngdukvqihemh.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oa3ZzeXFibmdkdWt2cWloZW1oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk3MTc5NjgsImV4cCI6MjA0NTI5Mzk2OH0.pw9Ffn_gHRr4shp9V-DgisvdqneBHeUZSmvQ61_ES5Q';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 function QuestionPage() {
-  const { id } = useParams(); // Get the ID from the URL params
-  const question = qaData.find((q) => q.id === parseInt(id)); // Find the question by ID
+  const { id } = useParams();
+  const { user } = useUser();
+  const [question, setQuestion] = useState(null);
+  const [answer, setAnswer] = useState('');
+  const [answers, setAnswers] = useState([]);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportType, setReportType] = useState('');
+  const [reportPostId, setReportPostId] = useState(null);
+  const [reportTitle, setReportTitle] = useState('');
+  const [reportDescription, setReportDescription] = useState('');
 
-  const [response, setResponse] = useState(''); // State to hold user's response
-  const [submittedResponse, setSubmittedResponse] = useState(''); // State to hold the submitted response
+  useEffect(() => {
+    const fetchQuestionAndAnswers = async () => {
+      setLoading(true);
 
-  // Handle response input change
-  const handleResponseChange = (e) => {
-    setResponse(e.target.value);
-  };
+      const { data: questionData, error: questionError } = await supabase
+        .from('questions')
+        .select('*')
+        .eq('id', id)
+        .single();
 
-  // Handle form submission
-  const handleResponseSubmit = (e) => {
+      if (questionError) {
+        console.error('Error fetching question:', questionError);
+        setError('Question not found.');
+      } else {
+        setQuestion(questionData);
+
+        const { data: answersData, error: answersError } = await supabase
+          .from('answers')
+          .select('id, answer, created_at, user_id, users (username)')
+          .eq('question_id', id)
+          .order('created_at', { ascending: true });
+
+        if (answersError) {
+          console.error('Error fetching answers:', answersError);
+        } else {
+          setAnswers(answersData);
+        }
+      }
+      setLoading(false);
+    };
+
+    fetchQuestionAndAnswers();
+  }, [id]);
+
+  const handleAnswerSubmit = async (e) => {
     e.preventDefault();
-    setSubmittedResponse(response); // Set the submitted response
-    setResponse(''); // Clear the input field after submission
+    if (!user) {
+      alert('You must be logged in to submit an answer.');
+      return;
+    }
+    const { data, error } = await supabase
+      .from('answers')
+      .insert([
+        {
+          question_id: id,
+          answer: answer,
+          user_id: user.id,
+        },
+      ])
+      .select('id, answer, created_at, user_id, users (username)')
+      .single();
+
+    if (error) {
+      console.error('Error submitting answer:', error);
+    } else {
+      setAnswers((prevAnswers) => [...prevAnswers, data]);
+      setAnswer('');
+    }
   };
 
-  if (!question) {
-    return <p>Question not found.</p>;
-  }
+  const openReportModal = (postId, type) => {
+    setReportPostId(postId);
+    setReportType(type);
+    setIsReportModalOpen(true);
+  };
+
+  const handleReportSubmit = async () => {
+    if (!user) {
+      alert('You must be logged in to report a post.');
+      return;
+    }
+    const { error } = await supabase
+      .from('reported_posts')
+      .insert({
+        post_id: reportPostId,
+        post_type: reportType,
+        reported_by: user.id,
+        title: reportTitle,
+        description: reportDescription,
+      });
+
+    if (error) {
+      console.error('Error submitting report:', error);
+    } else {
+      setIsReportModalOpen(false);
+      setReportTitle('');
+      setReportDescription('');
+      alert('Report submitted successfully.');
+    }
+  };
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>{error}</p>;
 
   return (
     <div className="question-page">
       <Link to="/forum" className="back-link">← Back to questions</Link>
-      <h2>{question.question}</h2>
-      <p>{question.answer}</p>
+      <h2>{question?.question}</h2>
+      <p>{question?.answer || "This question does not have an answer yet."}</p>
+      <button onClick={() => openReportModal(question.id, 'question')}>Report Question</button>
 
-      {/* Reply form */}
-      <form onSubmit={handleResponseSubmit} className="response-form">
+      <form onSubmit={handleAnswerSubmit} className="response-form">
         <textarea
-          value={response}
-          onChange={handleResponseChange}
-          placeholder="Write your response..."
+          value={answer}
+          onChange={(e) => setAnswer(e.target.value)}
+          placeholder="Write your answer..."
           required
           className="textarea"
         />
-        <button type="submit" className="submit-btn">Submit Response</button>
+        <button type="submit" className="submit-btn">Submit Answer</button>
       </form>
 
-      {/* Display the submitted response */}
-      {submittedResponse && (
-        <div className="response-display">
-          <h3>Your Response:</h3>
-          <p>{submittedResponse}</p>
+      <div className="responses-section">
+        <h3>Answers:</h3>
+        {answers.map((ans) => (
+          <div key={ans.id} className="response-item">
+            <p><strong>{ans.users?.username || 'Anonymous'}:</strong> {ans.answer}</p>
+            <button onClick={() => openReportModal(ans.id, 'answer')}>Report Answer</button>
+            <small>{new Date(ans.created_at).toLocaleString()}</small>
+          </div>
+        ))}
+      </div>
+
+      {isReportModalOpen && (
+        <div className="modal">
+          <div className="modal-content">
+            <h3>Report {reportType === 'question' ? 'Question' : 'Answer'}</h3>
+            <label>Title:</label>
+            <input
+              type="text"
+              value={reportTitle}
+              onChange={(e) => setReportTitle(e.target.value)}
+              required
+            />
+            <label>Description:</label>
+            <textarea
+              value={reportDescription}
+              onChange={(e) => setReportDescription(e.target.value)}
+              required
+            />
+            <button onClick={handleReportSubmit}>Report</button>
+            <button onClick={() => setIsReportModalOpen(false)}>Cancel</button>
+          </div>
         </div>
       )}
     </div>

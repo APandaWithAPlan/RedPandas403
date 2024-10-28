@@ -3,14 +3,13 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
-import { useUser } from './UserContext'; // Import UserContext
+import { useUser } from './UserContext';
 import './Login.css';
 
-const supabase = createClient(
-    process.env.REACT_APP_SUPABASE_URL,
-    process.env.REACT_APP_SUPABASE_ANON_KEY
-  );
-  
+const supabaseUrl = 'https://ohkvsyqbngdukvqihemh.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oa3ZzeXFibmdkdWt2cWloZW1oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk3MTc5NjgsImV4cCI6MjA0NTI5Mzk2OH0.pw9Ffn_gHRr4shp9V-DgisvdqneBHeUZSmvQ61_ES5Q';
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 function Login() {
     const [username, setUsername] = useState('');
@@ -18,7 +17,7 @@ function Login() {
     const [errorMessage, setErrorMessage] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
-    const { login } = useUser(); // Access login function from context
+    const { login } = useUser();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
