@@ -15,7 +15,7 @@ const Call = ({localStream, remoteStream})  => {
   }, [localStream,remoteStream])
 
   const location = useLocation();
-  const { selectedCourse } = location.state || {};
+  const selectedCourse = location.state?.selectedCourse;
 
   // State management for mic, camera, chat logs, and current message
   const [isMicOn, setIsMicOn] = useState(true);

@@ -24,7 +24,7 @@ function Homepage() {
     // Implement call initiation logic
     console.log(`Starting call for class: ${selectedCourse}`);
     // navigate to a call page
-    //navigate(`/call/`);
+    navigate(`/call`,{ state: { selectedCourse: selectedCourse } });
   };
 
   // courses

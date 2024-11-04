@@ -9,6 +9,7 @@ import Forum from './components/Forum';
 import Profile from './components/Profile';
 import QuestionPage from './components/QuestionPage';
 import AdminDashboard from './components/AdminDashboard';
+import Call from './components/Call';
 
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
           <Route path="/question/:id" element={<QuestionPage />} />
           <Route path="/admin/*" element={<AdminDashboard />} />
           <Route path="/profile" element={<Profile  />} />
+          <Route path='/call' element={<Call  />} />
         </Routes>
       </Router>
     </UserProvider>
