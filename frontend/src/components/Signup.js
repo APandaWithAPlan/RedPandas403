@@ -83,14 +83,14 @@ const Signup = () => {
             if (!response.ok) {
                 const errorData = await response.json();
                 console.error('Error response:', errorData);
-                throw new Error('Failed to send verification email');
+                throw new Error(' ');
             }
 
             const data = await response.json();
             console.log(data.message);
         } catch (error) {
             console.error('Error in sendVerificationEmail:', error.message);
-            setErrorMessage('Failed to send verification email');
+            setErrorMessage(' ');
         }
     };
 

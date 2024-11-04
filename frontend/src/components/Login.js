@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
-import { useUser } from './UserContext'; // Import UserContext
+import { useUser } from './UserContext';
 import './Login.css';
 
 const supabaseUrl = 'https://ohkvsyqbngdukvqihemh.supabase.co';
@@ -17,7 +17,7 @@ function Login() {
     const [errorMessage, setErrorMessage] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
-    const { login } = useUser(); // Access login function from context
+    const { login } = useUser();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -46,6 +46,12 @@ function Login() {
             }
 
             // Set user in context and navigate to homepage
+
+            //check to see if user is verified before logging in
+            if (!user.verified) {
+                setErrorMessage('User not verified. Please check your email for verification link.');
+                return;
+            }
             login(user); // Store user data in context
             setErrorMessage('');
             setLoading(false);

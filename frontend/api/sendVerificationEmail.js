@@ -17,7 +17,7 @@ export default async function handler(req, res) {
         });
 
         // Hardcode the base URL if needed
-        const verificationLink = `https://pandaprofessor.xyz/verify?token=${verificationToken}`;
+        const verificationLink = `https://pandaprofessor.xyz/api/verify?token=${verificationToken}`;
 
         const mailOptions = {
             from: 'MS_oIga09@pandaprofessor.xyz', // Replace with your "from" email

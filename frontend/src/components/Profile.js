@@ -4,7 +4,7 @@ import { useUser } from './UserContext';
 import { useNavigate } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
-import Homepage from './Homepage';
+import './Profile.css';
 
 const supabaseUrl = 'https://ohkvsyqbngdukvqihemh.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oa3ZzeXFibmdkdWt2cWloZW1oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk3MTc5NjgsImV4cCI6MjA0NTI5Mzk2OH0.pw9Ffn_gHRr4shp9V-DgisvdqneBHeUZSmvQ61_ES5Q';
@@ -13,6 +13,7 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const Profile = () => {
     const { user, login, logout, setUser } = useUser(); // Access setUser from context
+    const navigate = useNavigate();
     const changeUsername = async (newUsername) => {
         if (user) {
             // update the UI
@@ -75,11 +76,35 @@ const Profile = () => {
         }
     }
 
+    const resendVerificationEmail = async () => {
+        if (user && user.email) {
+            try {
+                const response = await fetch('/api/sendVerificationEmail', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        receiverEmail: user.email,
+                        verificationToken: user.verification_token // Assuming this is available in `user`
+                    }),
+                });
+    
+                if (response.ok) {
+                    console.log('Verification email resent successfully');
+                } else {
+                    console.error('Failed to resend verification email:', await response.json());
+                }
+            } catch (error) {
+                console.error('Error resending verification email:', error);
+            }
+        }
+    };
+    
+
         
     
 
     return (
-        <div>
+        <div className='profile-page'>
             {user ? (
                 <>
                     <h1>Welcome, {user.first_name}!</h1>
@@ -114,8 +139,12 @@ const Profile = () => {
                         Change Password
                     </button>
 
+                    <button onClick={resendVerificationEmail}>Resend Verification</button>
+
 
                     <button onClick={logout}>Log out</button>
+
+                    <button onClick={() => navigate(-1)}>Back</button>
                 </>
             ) : 
             

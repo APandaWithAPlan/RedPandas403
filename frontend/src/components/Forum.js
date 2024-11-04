@@ -1,22 +1,41 @@
-import { Link } from 'react-router-dom';
-import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { createClient } from '@supabase/supabase-js';
+import { useUser } from './UserContext'; // Import the useUser hook
 import './Forum.css';
 
+const supabaseUrl = 'https://ohkvsyqbngdukvqihemh.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oa3ZzeXFibmdkdWt2cWloZW1oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk3MTc5NjgsImV4cCI6MjA0NTI5Mzk2OH0.pw9Ffn_gHRr4shp9V-DgisvdqneBHeUZSmvQ61_ES5Q';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
 function Forum() {
+  const { user } = useUser(); // Access user from context
   const [question, setQuestion] = useState('');
   const [image, setImage] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredQuestions, setFilteredQuestions] = useState([]);
   const [searchSubmitted, setSearchSubmitted] = useState(false);
+  const [qaData, setQaData] = useState([]);
+  const navigate = useNavigate();
 
-  // Questions and answers data
-  const qaData = [
-    { id: 1, question: "How do I install React?", answer: "You can install React using npm by running: npm install react." },
-    { id: 2, question: "What is the use of useState in React?", answer: "useState is a hook that allows you to add React state to function components." },
-    { id: 3, question: "How to fetch data in React?", answer: "You can fetch data in React using the fetch API or libraries like Axios." },
-    { id: 4, question: "What are React Hooks?", answer: "Hooks are functions that let you 'hook into' React state and lifecycle features in function components." },
-    { id: 5, question: "How do you handle forms in React?", answer: "Forms in React are handled by controlling the input values with state using onChange handlers." },
-  ];
+  const handleNavigateHome = () => {
+    navigate('/'); // Navigate to the homepage
+  };
+
+  // Fetch questions from Supabase
+  useEffect(() => {
+    const fetchQuestions = async () => {
+      const { data, error } = await supabase.from('questions').select('*');
+
+      if (error) {
+        console.error('Error fetching questions:', error);
+      } else {
+        setQaData(data);
+      }
+    };
+
+    fetchQuestions();
+  }, []);
 
   // Handle search input change
   const handleSearchChange = (e) => {
@@ -24,8 +43,8 @@ function Forum() {
     const filtered = qaData.filter((qa) =>
       qa.question.toLowerCase().includes(e.target.value.toLowerCase())
     );
-    setFilteredQuestions(filtered); 
-    setSearchSubmitted(false); 
+    setFilteredQuestions(filtered);
+    setSearchSubmitted(false);
   };
 
   // Handle search form submission
@@ -36,15 +55,51 @@ function Forum() {
     );
     setFilteredQuestions(filtered);
     setSearchSubmitted(true);
-    setSearchTerm(''); 
+    setSearchTerm('');
+  };
+
+  // Handle question submission
+  const handleQuestionSubmit = async (e) => {
+    e.preventDefault();
+    if (!user) {
+      alert('You must be logged in to submit a question.');
+      return navigate('/login');
+    }
+
+    const { error } = await supabase
+      .from('questions')
+      .insert([
+        {
+          question,
+          user_id: user.id, 
+          image_url: image ? await uploadImage(image) : null, 
+        },
+      ]);
+
+    if (error) {
+      console.error('Error submitting question:', error);
+    } else {
+      alert('Question submitted successfully!');
+      setQuestion('');
+      setImage(null);
+      setQaData((prev) => [...prev, { question, user_id: user.id }]);
+    }
+  };
+
+  // Function to upload image
+  const uploadImage = async (file) => {
+    const { data, error } = await supabase.storage.from('images').upload(`public/${file.name}`, file);
+    if (error) {
+      console.error('Error uploading image:', error);
+      return null;
+    }
+    return data.Key; // Return the uploaded image URL or path
   };
 
   return (
     <div className="forum">
       <nav className="navbar">
-        <Link to="/">
-          <h1>Panda Professor</h1>
-        </Link>
+        <h1 onClick={handleNavigateHome} className="navbar-title">Panda Professor</h1>
         <form onSubmit={handleSearchSubmit} className="search-bar-container">
           <input
             type="text"
@@ -55,16 +110,47 @@ function Forum() {
           />
         </form>
         <div className="nav-links">
-          <button><Link to="/signup">Go to Signup</Link></button>
-          <button><Link to="/login">Go to Login</Link></button>
+          {user ? (
+            <>
+              <button><Link to="/profile">Profile</Link></button>
+              <button><Link to="/logout">Logout</Link></button>
+            </>
+          ) : (
+            <>
+              <button><Link to="/signup">Sign Up</Link></button>
+              <button><Link to="/login">Login</Link></button>
+            </>
+          )}
         </div>
       </nav>
 
-      <div className="content">
-        {!searchSubmitted && (
-          <div>
-            <h2>Submit Your Question or Image</h2>
-            <form className="submission-form">
+      <div className="forum-content">
+        <div className="questions-section">
+          {searchSubmitted && filteredQuestions.length > 0 ? (
+            <div className="search-results">
+              {filteredQuestions.map((qa) => (
+                <div key={qa.id} className="search-result-item">
+                  <h3>Q: <Link to={`/question/${qa.id}`}>{qa.question}</Link></h3>
+                  <p>A: <span className="view-answer">See answer</span></p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div>
+              {qaData.map((qa) => (
+                <div key={qa.id} className="search-result-item">
+                  <h3>Q: <Link to={`/question/${qa.id}`}>{qa.question}</Link></h3>
+                  <p>A: <span className="view-answer">See answer</span></p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="submission-section">
+          <h2>Submit a New Question</h2>
+          {user ? (
+            <form onSubmit={handleQuestionSubmit} className="submission-form">
               <div className="form-group">
                 <label htmlFor="question">Question:</label>
                 <textarea
@@ -88,19 +174,12 @@ function Forum() {
               </div>
               <button type="submit" className="submit-btn">Submit</button>
             </form>
-          </div>
-        )}
-
-        {searchSubmitted && filteredQuestions.length > 0 && (
-          <div className="search-results">
-            {filteredQuestions.map((qa) => (
-              <div key={qa.id} className="search-result-item">
-                <h3>Q: <Link to={`/question/${qa.id}`}>{qa.question}</Link></h3>
-                <p>A: <span className="view-answer">See answer</span></p>
-              </div>
-            ))}
-          </div>
-        )}
+          ) : (
+            <div>
+              <p>You must be logged in to submit a question. Please <Link to="/login">log in</Link>.</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

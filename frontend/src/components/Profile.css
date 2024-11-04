@@ -1,0 +1,64 @@
+/* src/components/Profile.css */
+
+.profile-page {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 2rem;
+    background-color: #333333; /* Dark background */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    text-align: center;
+    color: #ffffff; /* White text */
+    font-family: Arial, sans-serif;
+}
+
+.profile-page h1 {
+    color: #ffffff; /* White text */
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+.profile-page p {
+    color: #cccccc; /* Lighter grey for details */
+    font-size: 1rem;
+    margin: 0.5rem 0;
+}
+
+.profile-page button {
+    padding: 0.8rem 1.2rem;
+    background-color: #ff0000; /* Red for buttons */
+    color: #ffffff; /* White text on buttons */
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    margin: 0.5rem;
+    transition: background-color 0.3s ease;
+    font-weight: bold;
+}
+
+.profile-page button:hover {
+    background-color: #cc0000; /* Darker red on hover */
+}
+
+.profile-page button:active {
+    background-color: #990000; /* Even darker red on active */
+}
+
+.profile-page .logout-button {
+    background-color: #e74c3c; /* Slightly different red for log out */
+}
+
+.profile-page .logout-button:hover {
+    background-color: #c0392b;
+}
+
+.profile-page .logout-button:active {
+    background-color: #992d22;
+}
+
+.profile-page .logout-message {
+    color: #e74c3c;
+    font-size: 1rem;
+    margin-top: 2rem;
+}
