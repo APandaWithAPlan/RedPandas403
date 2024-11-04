@@ -16,7 +16,6 @@ function QuestionPage() {
   const [answers, setAnswers] = useState([]);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
-  
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportType, setReportType] = useState('');
   const [reportPostId, setReportPostId] = useState(null);
@@ -41,7 +40,7 @@ function QuestionPage() {
 
         const { data: answersData, error: answersError } = await supabase
           .from('answers')
-          .select('id, answer, created_at, user_id, users (username)')
+          .select('id, answer, created_at, user_id, users (username), like_ratio, like_count')
           .eq('question_id', id)
           .order('created_at', { ascending: true });
 
@@ -72,14 +71,61 @@ function QuestionPage() {
           user_id: user.id,
         },
       ])
-      .select('id, answer, created_at, user_id, users (username)')
+      .select('id, answer, created_at, user_id, users (username), like_ratio, like_count')
       .single();
 
     if (error) {
       console.error('Error submitting answer:', error);
+      setError('Failed to submit answer. Please try again.');
     } else {
       setAnswers((prevAnswers) => [...prevAnswers, data]);
       setAnswer('');
+    }
+  };
+
+  const handleAnswerLikeRatio = async (answerId, isLike) => {
+    if (!user) {
+      alert('You must be logged in to vote on an answer.');
+      return;
+    }
+
+    const answer = answers.find((ans) => ans.id === answerId);
+
+    if (!answer) {
+      console.error('Answer not found with ID:', answerId);
+      return;
+    }
+
+    try {
+      const likeAdjustment = isLike ? 1 : -1;
+
+      const { data, error } = await supabase
+        .from('answers')
+        .update({
+          like_ratio: answer.like_ratio + likeAdjustment,
+          like_count: answer.like_count + 1
+        })
+        .eq('id', answerId)
+        .select();
+
+      if (error) {
+        console.error('Error updating like ratio:', error);
+        setError('Failed to update like/dislike. Please try again.');
+        return;
+      }
+
+      console.log('Updated answer data:', data);
+
+      setAnswers((prevAnswers) =>
+        prevAnswers.map((ans) =>
+          ans.id === answerId
+            ? { ...ans, like_ratio: ans.like_ratio + likeAdjustment, like_count: ans.like_count + 1 }
+            : ans
+        )
+      );
+    } catch (error) {
+      console.error('Unexpected error during like ratio update:', error);
+      setError('An unexpected error occurred. Please try again.');
     }
   };
 
@@ -140,8 +186,19 @@ function QuestionPage() {
         {answers.map((ans) => (
           <div key={ans.id} className="response-item">
             <p><strong>{ans.users?.username || 'Anonymous'}:</strong> {ans.answer}</p>
-            <button onClick={() => openReportModal(ans.id, 'answer')}>Report Answer</button>
             <small>{new Date(ans.created_at).toLocaleString()}</small>
+      
+            <div className="rating-controls">
+              <button className={`vote-button ${ans.like_ratio > 0 ? 'upvoted' : ''}`} onClick={() => handleAnswerLikeRatio(ans.id, true)}>
+                <span className="upvote-icon">▲</span>
+              </button>
+              <span className="vote-count">{ans.like_ratio}</span>
+              <button className="vote-button" onClick={() => handleAnswerLikeRatio(ans.id, false)}>
+                <span className="downvote-icon">▼</span>
+              </button>
+            </div>
+
+            <button onClick={() => openReportModal(ans.id, 'answer')}>Report Answer</button>
           </div>
         ))}
       </div>
