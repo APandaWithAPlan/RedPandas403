@@ -4,12 +4,20 @@ import { createClient } from '@supabase/supabase-js';
 import { useUser } from './UserContext'; // Import the useUser hook
 import './Forum.css';
 
+// Load MathJax globally
+const loadMathJax = () => {
+  const script = document.createElement('script');
+  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=AM_CHTML';
+  script.async = true;
+  document.head.appendChild(script);
+};
+
 const supabaseUrl = 'https://ohkvsyqbngdukvqihemh.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oa3ZzeXFibmdkdWt2cWloZW1oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk3MTc5NjgsImV4cCI6MjA0NTI5Mzk2OH0.pw9Ffn_gHRr4shp9V-DgisvdqneBHeUZSmvQ61_ES5Q';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 function Forum() {
-  const { user } = useUser(); // Access user from context
+  const { user, logout } = useUser(); // Access user and setUser from context
   const [question, setQuestion] = useState('');
   const [image, setImage] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -18,11 +26,10 @@ function Forum() {
   const [qaData, setQaData] = useState([]);
   const navigate = useNavigate();
 
-  const handleNavigateHome = () => {
-    navigate('/'); // Navigate to the homepage
-  };
+  useEffect(() => {
+    loadMathJax(); // Load MathJax on component mount
+  }, []);
 
-  // Fetch questions from Supabase
   useEffect(() => {
     const fetchQuestions = async () => {
       const { data, error } = await supabase.from('questions').select('*');
@@ -31,13 +38,34 @@ function Forum() {
         console.error('Error fetching questions:', error);
       } else {
         setQaData(data);
+        reRenderMath();
       }
     };
 
     fetchQuestions();
   }, []);
 
-  // Handle search input change
+  useEffect(() => {
+    if (window.MathJax) {
+      window.MathJax.Hub.Queue(['Typeset', window.MathJax.Hub]);
+    }
+  }, [qaData, filteredQuestions]);
+
+  const reRenderMath = () => {
+    if (window.MathJax) {
+      window.MathJax.Hub.Queue(['Typeset', window.MathJax.Hub]);
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
+
+  const handleNavigateHome = () => {
+    navigate('/'); // Navigate to the homepage
+  };
+
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
     const filtered = qaData.filter((qa) =>
@@ -47,7 +75,6 @@ function Forum() {
     setSearchSubmitted(false);
   };
 
-  // Handle search form submission
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     const filtered = qaData.filter((qa) =>
@@ -58,7 +85,6 @@ function Forum() {
     setSearchTerm('');
   };
 
-  // Handle question submission
   const handleQuestionSubmit = async (e) => {
     e.preventDefault();
     if (!user) {
@@ -71,8 +97,8 @@ function Forum() {
       .insert([
         {
           question,
-          user_id: user.id, 
-          image_url: image ? await uploadImage(image) : null, 
+          user_id: user.id,
+          image_url: image ? await uploadImage(image) : null,
         },
       ]);
 
@@ -83,17 +109,17 @@ function Forum() {
       setQuestion('');
       setImage(null);
       setQaData((prev) => [...prev, { question, user_id: user.id }]);
+      reRenderMath();
     }
   };
 
-  // Function to upload image
   const uploadImage = async (file) => {
     const { data, error } = await supabase.storage.from('images').upload(`public/${file.name}`, file);
     if (error) {
       console.error('Error uploading image:', error);
       return null;
     }
-    return data.Key; // Return the uploaded image URL or path
+    return data.path; // Return the uploaded image URL or path
   };
 
   return (
@@ -113,7 +139,7 @@ function Forum() {
           {user ? (
             <>
               <button><Link to="/profile">Profile</Link></button>
-              <button><Link to="/logout">Logout</Link></button>
+              <button onClick={handleLogout}>Logout</button>
             </>
           ) : (
             <>
@@ -157,7 +183,7 @@ function Forum() {
                   id="question"
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
-                  placeholder="Type your question here..."
+                  placeholder="Type your question here... Use ` for math notation."
                   required
                   className="textarea"
                 />

@@ -8,6 +8,15 @@ const supabaseUrl = 'https://ohkvsyqbngdukvqihemh.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oa3ZzeXFibmdkdWt2cWloZW1oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk3MTc5NjgsImV4cCI6MjA0NTI5Mzk2OH0.pw9Ffn_gHRr4shp9V-DgisvdqneBHeUZSmvQ61_ES5Q';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+function loadMathJax() {
+  if (!window.MathJax) {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=AM_CHTML';
+    script.async = true;
+    document.head.appendChild(script);
+  }
+}
+
 function QuestionPage() {
   const { id } = useParams();
   const { user } = useUser();
@@ -23,6 +32,8 @@ function QuestionPage() {
   const [reportDescription, setReportDescription] = useState('');
 
   useEffect(() => {
+    loadMathJax(); // Load MathJax when the component mounts
+
     const fetchQuestionAndAnswers = async () => {
       setLoading(true);
 
@@ -37,24 +48,33 @@ function QuestionPage() {
         setError('Question not found.');
       } else {
         setQuestion(questionData);
-
-        const { data: answersData, error: answersError } = await supabase
-          .from('answers')
-          .select('id, answer, created_at, user_id, users (username), like_ratio, like_count')
-          .eq('question_id', id)
-          .order('created_at', { ascending: true });
-
-        if (answersError) {
-          console.error('Error fetching answers:', answersError);
-        } else {
-          setAnswers(answersData);
-        }
+        reRenderMath();
       }
+
+      const { data: answersData, error: answersError } = await supabase
+        .from('answers')
+        .select('id, answer, created_at, user_id, users (username), like_ratio, like_count')
+        .eq('question_id', id)
+        .order('created_at', { ascending: true });
+
+      if (answersError) {
+        console.error('Error fetching answers:', answersError);
+      } else {
+        setAnswers(answersData);
+        reRenderMath();
+      }
+
       setLoading(false);
     };
 
     fetchQuestionAndAnswers();
   }, [id]);
+
+  const reRenderMath = () => {
+    if (window.MathJax) {
+      window.MathJax.Hub.Queue(['Typeset', window.MathJax.Hub]);
+    }
+  };
 
   const handleAnswerSubmit = async (e) => {
     e.preventDefault();
@@ -80,6 +100,7 @@ function QuestionPage() {
     } else {
       setAnswers((prevAnswers) => [...prevAnswers, data]);
       setAnswer('');
+      reRenderMath(); // Re-render MathJax when a new answer is added
     }
   };
 
@@ -103,7 +124,7 @@ function QuestionPage() {
         .from('answers')
         .update({
           like_ratio: answer.like_ratio + likeAdjustment,
-          like_count: answer.like_count + 1
+          like_count: answer.like_count + 1,
         })
         .eq('id', answerId)
         .select();
@@ -123,6 +144,7 @@ function QuestionPage() {
             : ans
         )
       );
+      reRenderMath(); // Re-render MathJax after updating an answer
     } catch (error) {
       console.error('Unexpected error during like ratio update:', error);
       setError('An unexpected error occurred. Please try again.');
@@ -187,7 +209,7 @@ function QuestionPage() {
           <div key={ans.id} className="response-item">
             <p><strong>{ans.users?.username || 'Anonymous'}:</strong> {ans.answer}</p>
             <small>{new Date(ans.created_at).toLocaleString()}</small>
-      
+
             <div className="rating-controls">
               <button className={`vote-button ${ans.like_ratio > 0 ? 'upvoted' : ''}`} onClick={() => handleAnswerLikeRatio(ans.id, true)}>
                 <span className="upvote-icon">▲</span>
