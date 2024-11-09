@@ -9,250 +9,302 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 function loadMathJax() {
-  if (!window.MathJax) {
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=AM_CHTML';
-    script.async = true;
-    document.head.appendChild(script);
-  }
+    if (!window.MathJax) {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=AM_CHTML';
+        script.async = true;
+        document.head.appendChild(script);
+    }
 }
 
 function QuestionPage() {
-  const { id } = useParams();
-  const { user } = useUser();
-  const [question, setQuestion] = useState(null);
-  const [answer, setAnswer] = useState('');
-  const [answers, setAnswers] = useState([]);
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-  const [reportType, setReportType] = useState('');
-  const [reportPostId, setReportPostId] = useState(null);
-  const [reportTitle, setReportTitle] = useState('');
-  const [reportDescription, setReportDescription] = useState('');
+    const { id } = useParams();
+    const { user } = useUser();
+    const [question, setQuestion] = useState(null);
+    const [answer, setAnswer] = useState('');
+    const [answers, setAnswers] = useState([]);
+    const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+    const [reportType, setReportType] = useState('');
+    const [reportPostId, setReportPostId] = useState(null);
+    const [reportTitle, setReportTitle] = useState('');
+    const [reportDescription, setReportDescription] = useState('');
 
-  useEffect(() => {
-    loadMathJax(); // Load MathJax when the component mounts
+    useEffect(() => {
+        loadMathJax();
 
-    const fetchQuestionAndAnswers = async () => {
-      setLoading(true);
+        const fetchQuestionAndAnswers = async () => {
+            setLoading(true);
 
-      const { data: questionData, error: questionError } = await supabase
-        .from('questions')
-        .select('*')
-        .eq('id', id)
-        .single();
+            const { data: questionData, error: questionError } = await supabase
+                .from('questions')
+                .select('*')
+                .eq('id', id)
+                .single();
 
-      if (questionError) {
-        console.error('Error fetching question:', questionError);
-        setError('Question not found.');
-      } else {
-        setQuestion(questionData);
-        reRenderMath();
-      }
+            if (questionError) {
+                console.error('Error fetching question:', questionError);
+                setError('Question not found.');
+            } else {
+                setQuestion(questionData);
+                reRenderMath();
+            }
 
-      const { data: answersData, error: answersError } = await supabase
-        .from('answers')
-        .select('id, answer, created_at, user_id, users (username), like_ratio, like_count')
-        .eq('question_id', id)
-        .order('created_at', { ascending: true });
+            const { data: answersData, error: answersError } = await supabase
+                .from('answers')
+                .select('id, answer, created_at, user_id, users (username), like_ratio, like_count')
+                .eq('question_id', id)
+                .order('created_at', { ascending: true });
 
-      if (answersError) {
-        console.error('Error fetching answers:', answersError);
-      } else {
-        setAnswers(answersData);
-        reRenderMath();
-      }
+            if (answersError) {
+                console.error('Error fetching answers:', answersError);
+            } else {
+                setAnswers(answersData);
+                reRenderMath();
+            }
 
-      setLoading(false);
+            setLoading(false);
+        };
+
+        fetchQuestionAndAnswers();
+    }, [id]);
+
+    const reRenderMath = () => {
+        if (window.MathJax) {
+            window.MathJax.Hub.Queue(['Typeset', window.MathJax.Hub]);
+        }
     };
 
-    fetchQuestionAndAnswers();
-  }, [id]);
+    const handleAnswerSubmit = async (e) => {
+        e.preventDefault();
+        if (!user) {
+            alert('You must be logged in to submit an answer.');
+            return;
+        }
+        const { data, error } = await supabase
+            .from('answers')
+            .insert([
+                {
+                    question_id: id,
+                    answer: answer,
+                    user_id: user.id,
+                    like_ratio: 0,
+                    like_count: 0
+                },
+            ])
+            .select('id, answer, created_at, user_id, users (username), like_ratio, like_count')
+            .single();
 
-  const reRenderMath = () => {
-    if (window.MathJax) {
-      window.MathJax.Hub.Queue(['Typeset', window.MathJax.Hub]);
-    }
-  };
+        if (error) {
+            console.error('Error submitting answer:', error);
+            setError('Failed to submit answer. Please try again.');
+        } else {
+            setAnswers((prevAnswers) => [...prevAnswers, data]);
+            setAnswer('');
+            reRenderMath();
+        }
+    };
 
-  const handleAnswerSubmit = async (e) => {
-    e.preventDefault();
-    if (!user) {
-      alert('You must be logged in to submit an answer.');
-      return;
-    }
-    const { data, error } = await supabase
-      .from('answers')
-      .insert([
-        {
-          question_id: id,
-          answer: answer,
-          user_id: user.id,
-        },
-      ])
-      .select('id, answer, created_at, user_id, users (username), like_ratio, like_count')
-      .single();
+    const handleAnswerLikeRatio = async (answerId, isLike) => {
+        if (!user) {
+            alert('You must be logged in to vote on an answer.');
+            return;
+        }
 
-    if (error) {
-      console.error('Error submitting answer:', error);
-      setError('Failed to submit answer. Please try again.');
-    } else {
-      setAnswers((prevAnswers) => [...prevAnswers, data]);
-      setAnswer('');
-      reRenderMath(); // Re-render MathJax when a new answer is added
-    }
-  };
+        const answer = answers.find((ans) => ans.id === answerId);
 
-  const handleAnswerLikeRatio = async (answerId, isLike) => {
-    if (!user) {
-      alert('You must be logged in to vote on an answer.');
-      return;
-    }
+        if (!answer) {
+            console.error('Answer not found with ID:', answerId);
+            return;
+        }
 
-    const answer = answers.find((ans) => ans.id === answerId);
+        try {
+            const { data: existingVote, error: voteError } = await supabase
+                .from('votes')
+                .select('*')
+                .eq('user_id', user.id)
+                .eq('answer_id', answerId)
+                .single();
 
-    if (!answer) {
-      console.error('Answer not found with ID:', answerId);
-      return;
-    }
+            if (voteError && voteError.code !== 'PGRST116') {
+                console.error('Error checking existing vote:', voteError);
+                setError('Failed to update like/dislike. Please try again.');
+                return;
+            }
 
-    try {
-      const likeAdjustment = isLike ? 1 : -1;
+            let likeAdjustment = 0;
 
-      const { data, error } = await supabase
-        .from('answers')
-        .update({
-          like_ratio: answer.like_ratio + likeAdjustment,
-          like_count: answer.like_count + 1,
-        })
-        .eq('id', answerId)
-        .select();
+            if (existingVote) {
+                const newVoteType = isLike ? 'upvote' : 'downvote';
 
-      if (error) {
-        console.error('Error updating like ratio:', error);
-        setError('Failed to update like/dislike. Please try again.');
-        return;
-      }
+                if (existingVote.vote_type === newVoteType) {
+                    alert('You have already voted this way.');
+                    return;
+                }
 
-      console.log('Updated answer data:', data);
+                likeAdjustment = existingVote.vote_type === 'upvote' ? -2 : 2;
 
-      setAnswers((prevAnswers) =>
-        prevAnswers.map((ans) =>
-          ans.id === answerId
-            ? { ...ans, like_ratio: ans.like_ratio + likeAdjustment, like_count: ans.like_count + 1 }
-            : ans
-        )
-      );
-      reRenderMath(); // Re-render MathJax after updating an answer
-    } catch (error) {
-      console.error('Unexpected error during like ratio update:', error);
-      setError('An unexpected error occurred. Please try again.');
-    }
-  };
+                const { error: updateError } = await supabase
+                    .from('votes')
+                    .update({ vote_type: newVoteType })
+                    .eq('id', existingVote.id);
 
-  const openReportModal = (postId, type) => {
-    setReportPostId(postId);
-    setReportType(type);
-    setIsReportModalOpen(true);
-  };
+                if (updateError) {
+                    console.error('Error updating vote:', updateError);
+                    setError('Failed to update vote. Please try again.');
+                    return;
+                }
+            } else {
+                likeAdjustment = isLike ? 1 : -1;
 
-  const handleReportSubmit = async () => {
-    if (!user) {
-      alert('You must be logged in to report a post.');
-      return;
-    }
-    const { error } = await supabase
-      .from('reported_posts')
-      .insert({
-        post_id: reportPostId,
-        post_type: reportType,
-        reported_by: user.id,
-        title: reportTitle,
-        description: reportDescription,
-      });
+                const { error: insertError } = await supabase
+                    .from('votes')
+                    .insert({
+                        user_id: user.id,
+                        answer_id: answerId,
+                        vote_type: isLike ? 'upvote' : 'downvote',
+                    });
 
-    if (error) {
-      console.error('Error submitting report:', error);
-    } else {
-      setIsReportModalOpen(false);
-      setReportTitle('');
-      setReportDescription('');
-      alert('Report submitted successfully.');
-    }
-  };
+                if (insertError) {
+                    console.error('Error inserting vote:', insertError);
+                    setError('Failed to submit vote. Please try again.');
+                    return;
+                }
+            }
 
-  if (loading) return <p>Loading...</p>;
-  if (error) return <p>{error}</p>;
+            const { data: updatedAnswer, error } = await supabase
+                .from('answers')
+                .update({
+                    like_ratio: (answer.like_ratio || 0) + likeAdjustment,
+                    like_count: (answer.like_count || 0) + 1,
+                })
+                .eq('id', answerId)
+                .select();
 
-  return (
-    <div className="question-page">
-      <Link to="/forum" className="back-link">← Back to questions</Link>
-      <h2>{question?.question}</h2>
-      {question?.image_url && (
-        <div className="question-image">
-          <img src={question.image_url} alt="Question related" />
-        </div>
-      )}
-      <p>{answers.length === 0 ? "This question does not have an answer yet." : ""}</p>
+            if (error) {
+                console.error('Error updating like ratio:', error);
+                setError('Failed to update like/dislike. Please try again.');
+                return;
+            }
 
-      <form onSubmit={handleAnswerSubmit} className="response-form">
-        <textarea
-          value={answer}
-          onChange={(e) => setAnswer(e.target.value)}
-          placeholder="Write your answer..."
-          required
-          className="textarea"
-        />
-        <button type="submit" className="submit-btn">Submit Answer</button>
-      </form>
+            setAnswers((prevAnswers) =>
+                prevAnswers.map((ans) =>
+                    ans.id === answerId
+                        ? { ...ans, like_ratio: (ans.like_ratio || 0) + likeAdjustment, like_count: (ans.like_count || 0) + 1 }
+                        : ans
+                )
+            );
+            reRenderMath();
+        } catch (error) {
+            console.error('Unexpected error during like ratio update:', error);
+            setError('An unexpected error occurred. Please try again.');
+        }
+    };
 
-      <div className="responses-section">
-        <h3>Answers:</h3>
-        {answers.map((ans) => (
-          <div key={ans.id} className="response-item">
-            <p><strong>{ans.users?.username || 'Anonymous'}:</strong> {ans.answer}</p>
-            <small>{new Date(ans.created_at).toLocaleString()}</small>
+    const openReportModal = (postId, type) => {
+        setReportPostId(postId);
+        setReportType(type);
+        setIsReportModalOpen(true);
+    };
 
-            <div className="rating-controls">
-              <button className={`vote-button ${ans.like_ratio > 0 ? 'upvoted' : ''}`} onClick={() => handleAnswerLikeRatio(ans.id, true)}>
-                <span className="upvote-icon">▲</span>
-              </button>
-              <span className="vote-count">{ans.like_ratio}</span>
-              <button className="vote-button" onClick={() => handleAnswerLikeRatio(ans.id, false)}>
-                <span className="downvote-icon">▼</span>
-              </button>
+    const handleReportSubmit = async () => {
+        if (!user) {
+            alert('You must be logged in to report a post.');
+            return;
+        }
+        const { error } = await supabase
+            .from('reported_posts')
+            .insert({
+                post_id: reportPostId,
+                post_type: reportType,
+                reported_by: user.id,
+                title: reportTitle,
+                description: reportDescription,
+            });
+
+        if (error) {
+            console.error('Error submitting report:', error);
+        } else {
+            setIsReportModalOpen(false);
+            setReportTitle('');
+            setReportDescription('');
+            alert('Report submitted successfully.');
+        }
+    };
+
+    if (loading) return <p>Loading...</p>;
+    if (error) return <p>{error}</p>;
+
+    return (
+        <div className="question-page">
+            <Link to="/forum" className="back-link">← Back to questions</Link>
+            <h2>{question?.question}</h2>
+            {question?.image_url && (
+                <div className="question-image">
+                    <img src={question.image_url} alt="Question related" />
+                </div>
+            )}
+            <button onClick={() => openReportModal(id, 'question')}>Report Question</button>
+            <p>{answers.length === 0 ? "This question does not have an answer yet." : ""}</p>
+
+            <form onSubmit={handleAnswerSubmit} className="response-form">
+                <textarea
+                    value={answer}
+                    onChange={(e) => setAnswer(e.target.value)}
+                    placeholder="Write your answer..."
+                    required
+                    className="textarea"
+                />
+                <button type="submit" className="submit-btn">Submit Answer</button>
+            </form>
+
+            <div className="responses-section">
+                <h3>Answers:</h3>
+                {answers.map((ans) => (
+                    <div key={ans.id} className="response-item">
+                        <p><strong>{ans.users?.username || 'Anonymous'}:</strong> {ans.answer}</p>
+                        <small>{new Date(ans.created_at).toLocaleString()}</small>
+
+                        <div className="rating-controls">
+                            <button className="vote-button" onClick={() => handleAnswerLikeRatio(ans.id, true)}>
+                                <span className="upvote-icon">▲</span>
+                            </button>
+                            <span className="vote-count">{ans.like_ratio}</span>
+                            <button className="vote-button" onClick={() => handleAnswerLikeRatio(ans.id, false)}>
+                                <span className="downvote-icon">▼</span>
+                            </button>
+                        </div>
+
+                        <button onClick={() => openReportModal(ans.id, 'answer')}>Report Answer</button>
+                    </div>
+                ))}
             </div>
 
-            <button onClick={() => openReportModal(ans.id, 'answer')}>Report Answer</button>
-          </div>
-        ))}
-      </div>
-
-      {isReportModalOpen && (
-        <div className="modal">
-          <div className="modal-content">
-            <h3>Report {reportType === 'question' ? 'Question' : 'Answer'}</h3>
-            <label>Title:</label>
-            <input
-              type="text"
-              value={reportTitle}
-              onChange={(e) => setReportTitle(e.target.value)}
-              required
-            />
-            <label>Description:</label>
-            <textarea
-              value={reportDescription}
-              onChange={(e) => setReportDescription(e.target.value)}
-              required
-            />
-            <button onClick={handleReportSubmit}>Report</button>
-            <button onClick={() => setIsReportModalOpen(false)}>Cancel</button>
-          </div>
+            {isReportModalOpen && (
+                <div className="modal">
+                    <div className="modal-content">
+                        <h3>Report {reportType === 'question' ? 'Question' : 'Answer'}</h3>
+                        <label>Title:</label>
+                        <input
+                            type="text"
+                            value={reportTitle}
+                            onChange={(e) => setReportTitle(e.target.value)}
+                            required
+                        />
+                        <label>Description:</label>
+                        <textarea
+                            value={reportDescription}
+                            onChange={(e) => setReportDescription(e.target.value)}
+                            required
+                        />
+                        <button onClick={handleReportSubmit}>Report</button>
+                        <button onClick={() => setIsReportModalOpen(false)}>Cancel</button>
+                    </div>
+                </div>
+            )}
         </div>
-      )}
-    </div>
-  );
+    );
 }
 
 export default QuestionPage;

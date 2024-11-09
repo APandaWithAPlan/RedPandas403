@@ -29,7 +29,6 @@ function ReportedPosts() {
 
   const handleDeleteQuestion = async (postId) => {
     if (window.confirm('Are you sure you want to delete this question? This action cannot be undone.')) {
-      // Delete the question from the questions table
       const { error: questionError } = await supabase
         .from('questions')
         .delete()
@@ -40,7 +39,6 @@ function ReportedPosts() {
         return;
       }
 
-      // Delete the report from the reported_posts table if the question deletion was successful
       const { error: reportError } = await supabase
         .from('reported_posts')
         .delete()
@@ -51,6 +49,32 @@ function ReportedPosts() {
       } else {
         setReportedPosts(reportedPosts.filter((report) => report.post_id !== postId));
         alert('Question and its report deleted successfully.');
+      }
+    }
+  };
+
+  const handleDeleteAnswer = async (postId) => {
+    if (window.confirm('Are you sure you want to delete this answer? This action cannot be undone.')) {
+      const { error: answerError } = await supabase
+        .from('answers')
+        .delete()
+        .eq('id', postId);
+
+      if (answerError) {
+        console.error('Error deleting answer:', answerError);
+        return;
+      }
+
+      const { error: reportError } = await supabase
+        .from('reported_posts')
+        .delete()
+        .eq('post_id', postId);
+
+      if (reportError) {
+        console.error('Error deleting report:', reportError);
+      } else {
+        setReportedPosts(reportedPosts.filter((report) => report.post_id !== postId));
+        alert('Answer and its report deleted successfully.');
       }
     }
   };
@@ -74,6 +98,11 @@ function ReportedPosts() {
             {report.post_type === 'question' && (
               <button onClick={() => handleDeleteQuestion(report.post_id)}>
                 Delete Question
+              </button>
+            )}
+            {report.post_type === 'answer' && (
+              <button onClick={() => handleDeleteAnswer(report.post_id)}>
+                Delete Answer
               </button>
             )}
           </div>
