@@ -189,8 +189,12 @@ function QuestionPage() {
     <div className="question-page">
       <Link to="/forum" className="back-link">← Back to questions</Link>
       <h2>{question?.question}</h2>
-      <p>{question?.answer || "This question does not have an answer yet."}</p>
-      <button onClick={() => openReportModal(question.id, 'question')}>Report Question</button>
+      {question?.image_url && (
+        <div className="question-image">
+          <img src={question.image_url} alt="Question related" />
+        </div>
+      )}
+      <p>{answers.length === 0 ? "This question does not have an answer yet." : ""}</p>
 
       <form onSubmit={handleAnswerSubmit} className="response-form">
         <textarea
