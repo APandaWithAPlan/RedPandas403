@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import React, { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useUser } from './UserContext'; // Import the useUser hook
+import { v4 as uuidv4 } from 'uuid'; // Import uuid for unique file names
 import './Forum.css';
 
 const supabaseUrl = 'https://ohkvsyqbngdukvqihemh.supabase.co';
@@ -66,13 +67,14 @@ function Forum() {
       return navigate('/login');
     }
 
+    const image_url = image ? await uploadImage(image) : null;
     const { error } = await supabase
       .from('questions')
       .insert([
         {
           question,
           user_id: user.id, 
-          image_url: image ? await uploadImage(image) : null, 
+          image_url,
         },
       ]);
 
@@ -82,18 +84,26 @@ function Forum() {
       alert('Question submitted successfully!');
       setQuestion('');
       setImage(null);
-      setQaData((prev) => [...prev, { question, user_id: user.id }]);
+      setQaData((prev) => [...prev, { question, user_id: user.id, image_url }]);
     }
   };
 
   // Function to upload image
   const uploadImage = async (file) => {
-    const { data, error } = await supabase.storage.from('images').upload(`public/${file.name}`, file);
-    if (error) {
-      console.error('Error uploading image:', error);
+    try {
+      const uniqueFileName = `${uuidv4()}-${file.name}`;
+      const { data, error } = await supabase.storage.from('question_img').upload(uniqueFileName, file);
+      if (error) {
+        console.error('Error uploading image:', error);
+        return null;
+      }
+      // Construct public URL for the uploaded image
+      const { publicURL } = supabase.storage.from('question_img').getPublicUrl(uniqueFileName);
+      return publicURL;
+    } catch (err) {
+      console.error('Unexpected error:', err);
       return null;
     }
-    return data.Key; // Return the uploaded image URL or path
   };
 
   return (

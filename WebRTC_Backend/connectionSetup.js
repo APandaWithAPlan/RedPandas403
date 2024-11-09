@@ -6,7 +6,7 @@
 let username = null;
 let password = null;
 
-const socket = io.connect('https://localhost:3000/', {
+const socket = io.connect('https://localhost:5000/', {
     auth: {
         username: "bbays2024",
         password: "softwaredesign"

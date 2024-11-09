@@ -3,58 +3,95 @@ const fs = require('fs');
 const https = require('https');
 const express = require('express');
 const socketio = require('socket.io');
+const cors = require('cors'); // Added for CORS handling
 const app = express();
 const port = 3000;
+
+// Enable CORS for your frontend origin
+app.use(cors({
+    origin: 'http://localhost:3001', // Replace this with your frontend URL
+    methods: ['GET', 'POST'],
+    credentials: true
+}));
+
 app.use(express.static(__dirname));
 
 // HTTPS keys needed 
 const serverAccess = {
-    key: fs.readFileSync('cert.key'),                  // TODO: find the actual file names
+    key: fs.readFileSync('cert.key'), // Ensure these files exist and are correct
     cert: fs.readFileSync('cert.crt')
 };
 
-// Servers
+// Create HTTPS server and set up Socket.IO
 const expressServer = https.createServer(serverAccess, app);
 const io = socketio(expressServer, {
-        cors : {
-            origin: ["https://localhost"],
-            methods: ["GET", "POST"]
-        }
+    cors: {
+        origin: 'http://localhost:3001', // Replace this with your frontend URL
+        methods: ['GET', 'POST']
     }
-);
+});
 
-// Packages
+// Data structures to manage connected clients and offers
 const offers = [];
+const queues = {}; // Queue for matching users in the same subject
 const clientsConnected = [];
-//let socketId;
 
-expressServer.listen(port);
+// Start the server and log a message when it is running successfully
+expressServer.listen(port, () => {
+    console.log(`Signaling server is running on https://localhost:${port}`);
+});
 
-// handle connection events
+// Handle connection events
 io.on('connection', (socket) => {
-    // pull authentication from connectionSetup
+    console.log(`Client connected: ${socket.id}`);
+
+    // Authenticate user based on connection handshake data
     const username = socket.handshake.auth.username;
     const password = socket.handshake.auth.password;
 
-    // password handling
-    if (password != "softwaredesign") {
-        console.log("Error! Incorrect password!");
+    console.log(`Attempting authentication for user: ${username}`);
+
+    if (password !== "softwaredesign") {
+        console.log(`Authentication failed for user: ${username}`);
+        socket.disconnect();
         return;
     }
 
-    // track clients
+    console.log(`User authenticated: ${username}`);
+
+    // Track connected clients
     clientsConnected.push({
         socketId: socket.id,
         username
-    })
+    });
+    console.log(`Client added: ${username} with socket ID: ${socket.id}`);
 
-    // emit any available offers
-    if (offers.length){
-        socket.emit('availableOffers', offers);
-    }
+    socket.on('startCall', (subject) => {
+        console.log(`User ${username} started a call in ${subject}`);
 
-    // push any offers to the callee
-    socket.on('newOffer', (newOffer) =>{
+        if (!queues[subject]) {
+            queues[subject] = [];
+        }
+
+        queues[subject].push(socket);
+
+        // Check if there is a match in the queue
+        if (queues[subject].length >= 2) {
+            const [user1, user2] = queues[subject].splice(0, 2);
+            console.log(`Matched users: ${user1.id} (${user1.handshake.auth.username}) and ${user2.id} (${user2.handshake.auth.username}) in ${subject}`);
+
+            // Notify users that they are matched
+            user1.emit('matchFound', { peerSocketId: user2.id });
+            user2.emit('matchFound', { peerSocketId: user1.id });
+        } else {
+            socket.emit('searchingForMatch', { message: 'Searching for a match...' });
+            console.log(`User ${username} is waiting for a match in ${subject}`);
+        }
+    });
+
+    // Handle 'newOffer' event
+    socket.on('newOffer', (newOffer) => {
+        console.log(`Received new offer from ${username}`);
         offers.push({
             offererUserName: username,
             offer: newOffer,
@@ -62,76 +99,85 @@ io.on('connection', (socket) => {
             answererUserName: null,
             answer: null,
             answererIceCandidates: []
-        })
-        // send the offer out to everyone except offerer
-        socket.broadcast.emit('newOfferAwaiting', offers.slice(-1))
-    })
+        });
+        console.log('Broadcasting new offer to other clients');
+        socket.broadcast.emit('newOfferAwaiting', offers.slice(-1));
+    });
 
-    // emit answer from the callee to the original caller
+    // Handle 'newAnswer' event
     socket.on('newAnswer', (offerObj, ackFunction) => {
+        console.log(`Received new answer from ${username}`);
         console.log(offerObj);
 
-        // find the original caller
         const callerClient = clientsConnected.find(client => client.username === offerObj.offererUserName);
         if (!callerClient) {
-            console.log("There is no callerClient (signalingServer.js");
-        }
-
-        // find the offer that needs to be updated, given new offerObj information
-        const offerToUpdate = offers.find(offer=>offer.offererUserName === offerObj.offererUserName);
-        if (!offerToUpdate) {
-            console.log("There is no offerToUpdate (signalingServer.js)");
+            console.log("No caller client found for the provided username.");
             return;
         }
+        console.log(`Caller client found: ${callerClient.username}`);
 
-        // write data recieved from offerObj to offerToUpdate array in current file
-        ackFunction(offerToUpdate, offererIceCandidates);
+        const offerToUpdate = offers.find(offer => offer.offererUserName === offerObj.offererUserName);
+        if (!offerToUpdate) {
+            console.log("No matching offer found to update.");
+            return;
+        }
+        console.log(`Offer found and updated for ${offerObj.offererUserName}`);
+
+        ackFunction(offerToUpdate, offerToUpdate.offererIceCandidates);
         offerToUpdate.answer = offerObj.answer;
-        offerToUpdate.offererUserName = username;
+        offerToUpdate.answererUserName = username;
 
-        // emit to a room (need the socket ID of the offer in order to send)
+        console.log(`Emitting answer response to ${callerClient.socketId}`);
         socket.to(callerClient.socketId).emit('answerResponse', offerToUpdate);
-    })
-    
-    // send ice candidates from caller to callee
+    });
+
+    // Handle 'sendIceCandidateToSignalingServer' event
     socket.on('sendIceCandidateToSignalingServer', (iceCandidateObj) => {
+        console.log(`Received ICE candidate from ${username}`);
         const amICaller = iceCandidateObj.amICaller;
-        const iceUserName = iceCandiateObj.iceUserName;
+        const iceUserName = iceCandidateObj.iceUserName;
         const iceCandidate = iceCandidateObj.iceCandidate;
 
         if (amICaller) {
-            // this ice candidate is coming from the offerer. Find the first offererUserName offer
-            // in the offers array that is the same as the ice candidate user name we just 
-            // received
-            const offerInOffers = offers.find(o=>o.offererUserName === iceUserName);
+            console.log(`Processing ICE candidate from caller: ${iceUserName}`);
+            const offerInOffers = offers.find(o => o.offererUserName === iceUserName);
 
-            // if we found the matching offer in the offers array, we're going to put that 
-            // callers ice candidates into the package we just found and send it
             if (offerInOffers) {
-                offerInOffers.offererIceCandidates.push(iceCandidate)
+                offerInOffers.offererIceCandidates.push(iceCandidate);
+                console.log('Added ICE candidate to caller\'s list');
 
                 if (offerInOffers.answererUserName) {
                     const offerForAnswerer = clientsConnected.find(client => client.username === offerInOffers.answererUserName);
 
                     if (offerForAnswerer) {
+                        console.log(`Sending ICE candidate to answerer: ${offerForAnswerer.username}`);
                         socket.to(offerForAnswerer.socketId).emit('receivedIceCandidateFromServer', iceCandidate);
                     } else {
-                        console.log("Signaling server received ice candidate, but could not find socketId of answerer.");
+                        console.log("Could not find socket ID of answerer to send ICE candidate.");
                     }
                 }
             }
-            
         } else {
-            // send ice candidate from answerer to offerer. First find the offerer's socket, then
-            // look for their username, then look for their socket ID. Add any new info to the package
-            const offerInOffers = offers.find(o=>o.answererUserName === iceUserName);
-            const offerForCaller = clientsConnected.find(c=>c.username === offerInOffers.offererUserName);
+            console.log(`Processing ICE candidate from answerer: ${iceUserName}`);
+            const offerInOffers = offers.find(o => o.answererUserName === iceUserName);
+            const offerForCaller = clientsConnected.find(c => c.username === offerInOffers?.offererUserName);
 
             if (offerForCaller) {
+                console.log(`Sending ICE candidate to caller: ${offerForCaller.username}`);
                 socket.to(offerForCaller.socketId).emit('receivedIceCandidateFromServer', iceCandidate);
             } else {
-                console.log("Signaling server received ice candidate from answerer, could not find offerer.")
+                console.log("Could not find offerer to send ICE candidate.");
             }
         }
-    })
-})
+    });
+
+    // Handle client disconnection
+    socket.on('disconnect', () => {
+        console.log(`Client disconnected: ${socket.id}`);
+        const index = clientsConnected.findIndex(client => client.socketId === socket.id);
+        if (index !== -1) {
+            console.log(`Removing client: ${clientsConnected[index].username}`);
+            clientsConnected.splice(index, 1);
+        }
+    });
+});

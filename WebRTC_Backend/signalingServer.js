@@ -4,7 +4,7 @@ const https = require('https');
 const express = require('express');
 const socketio = require('socket.io');
 const app = express();
-const port = 3000;
+const port = 5001;
 app.use(express.static(__dirname));
 
 // HTTPS keys needed 
