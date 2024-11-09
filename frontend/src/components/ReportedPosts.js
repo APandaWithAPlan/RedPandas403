@@ -29,16 +29,28 @@ function ReportedPosts() {
 
   const handleDeleteQuestion = async (postId) => {
     if (window.confirm('Are you sure you want to delete this question? This action cannot be undone.')) {
-      const { error } = await supabase
+      // Delete the question from the questions table
+      const { error: questionError } = await supabase
         .from('questions')
         .delete()
         .eq('id', postId);
 
-      if (error) {
-        console.error('Error deleting question:', error);
+      if (questionError) {
+        console.error('Error deleting question:', questionError);
+        return;
+      }
+
+      // Delete the report from the reported_posts table if the question deletion was successful
+      const { error: reportError } = await supabase
+        .from('reported_posts')
+        .delete()
+        .eq('post_id', postId);
+
+      if (reportError) {
+        console.error('Error deleting report:', reportError);
       } else {
         setReportedPosts(reportedPosts.filter((report) => report.post_id !== postId));
-        alert('Question deleted successfully.');
+        alert('Question and its report deleted successfully.');
       }
     }
   };
