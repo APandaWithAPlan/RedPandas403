@@ -20,6 +20,7 @@ const Signup = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [verifyPassword, setVerifyPassword] = useState('');
+    const [role, setRole] = useState(''); // New state for role selection
     const [errorMessage, setErrorMessage] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
     const [loading, setLoading] = useState(false);
@@ -33,11 +34,17 @@ const Signup = () => {
             return;
         }
 
+        if (!role) {
+            setErrorMessage('Please select whether you are a tutor or a student.');
+            return;
+        }
+
         setLoading(true);
 
         try {
             const hashedPassword = await bcrypt.hash(password, 10);
             const verificationToken = uuidv4();
+            const isTutor = role === 'tutor';
 
             const { error } = await supabase
                 .from('users')
@@ -50,6 +57,7 @@ const Signup = () => {
                         password: hashedPassword,
                         verified: false,
                         verification_token: verificationToken,
+                        is_tutor: isTutor, // New field to indicate if the user is a tutor or not
                     },
                 ]);
 
@@ -148,6 +156,29 @@ const Signup = () => {
                     onChange={(e) => setVerifyPassword(e.target.value)} 
                     required 
                 />
+                <label htmlFor="role">Role:</label>
+                <div className="role-selection">
+                    <label>
+                        <input 
+                            type="radio" 
+                            name="role" 
+                            value="student" 
+                            onChange={(e) => setRole(e.target.value)} 
+                            required
+                        />
+                        Student
+                    </label>
+                    <label>
+                        <input 
+                            type="radio" 
+                            name="role" 
+                            value="tutor" 
+                            onChange={(e) => setRole(e.target.value)} 
+                            required
+                        />
+                        Tutor
+                    </label>
+                </div>
                 <button type="submit" disabled={loading}>{loading ? 'Creating...' : 'Signup'}</button>
             </form>
             <p>

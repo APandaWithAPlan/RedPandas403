@@ -114,7 +114,7 @@ function Forum() {
   };
 
   const uploadImage = async (file) => {
-    const { data, error } = await supabase.storage.from('images').upload(`public/${file.name}`, file);
+    const { data, error } = await supabase.storage.from('question_img').upload(`public/${file.name}`, file);
     if (error) {
       console.error('Error uploading image:', error);
       return null;
