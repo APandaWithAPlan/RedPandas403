@@ -47,7 +47,12 @@ function QuestionPage() {
                 console.error('Error fetching question:', questionError);
                 setError('Question not found.');
             } else {
-                setQuestion(questionData);
+                setQuestion({
+                    ...questionData,
+                    image_url: questionData.image_url
+                        ? `${supabaseUrl}/storage/v1/object/public/question_img/${questionData.image_url}`
+                        : null,
+                });
                 reRenderMath();
             }
 

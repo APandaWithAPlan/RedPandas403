@@ -1,10 +1,9 @@
 import { Link, useNavigate } from 'react-router-dom';
 import React, { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { useUser } from './UserContext'; // Import the useUser hook
+import { useUser } from './UserContext';
 import './Forum.css';
 
-// Load MathJax globally
 const loadMathJax = () => {
   const script = document.createElement('script');
   script.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=AM_CHTML';
@@ -17,7 +16,7 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 function Forum() {
-  const { user, logout } = useUser(); // Access user and setUser from context
+  const { user, logout } = useUser();
   const [question, setQuestion] = useState('');
   const [image, setImage] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -27,7 +26,7 @@ function Forum() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    loadMathJax(); // Load MathJax on component mount
+    loadMathJax();
   }, []);
 
   useEffect(() => {
@@ -37,12 +36,37 @@ function Forum() {
       if (error) {
         console.error('Error fetching questions:', error);
       } else {
-        setQaData(data);
-        reRenderMath();
+        const updatedData = data.map((qa) => ({
+          ...qa,
+          image_url: qa.image_url
+            ? `${supabaseUrl}/storage/v1/object/public/question_img/${qa.image_url}`
+            : null,
+        }));
+        setQaData(updatedData);
       }
     };
 
     fetchQuestions();
+
+    // Add a paste event listener to handle images pasted from the clipboard
+    const handlePaste = (e) => {
+      const clipboardItems = e.clipboardData.items;
+      for (let item of clipboardItems) {
+        if (item.type.startsWith('image/')) {
+          const blob = item.getAsFile();
+          setImage(blob); // Set the image as if it were chosen from file input
+          break;
+        }
+      }
+    };
+
+    // Attach the event listener
+    window.addEventListener('paste', handlePaste);
+    
+    // Clean up the event listener on component unmount
+    return () => {
+      window.removeEventListener('paste', handlePaste);
+    };
   }, []);
 
   useEffect(() => {
@@ -51,19 +75,13 @@ function Forum() {
     }
   }, [qaData, filteredQuestions]);
 
-  const reRenderMath = () => {
-    if (window.MathJax) {
-      window.MathJax.Hub.Queue(['Typeset', window.MathJax.Hub]);
-    }
-  };
-
   const handleLogout = () => {
     logout();
     navigate('/');
   };
 
   const handleNavigateHome = () => {
-    navigate('/'); // Navigate to the homepage
+    navigate('/');
   };
 
   const handleSearchChange = (e) => {
@@ -92,13 +110,15 @@ function Forum() {
       return navigate('/login');
     }
 
+    const imageUrl = image ? await uploadImage(image) : null;
+
     const { error } = await supabase
       .from('questions')
       .insert([
         {
           question,
           user_id: user.id,
-          image_url: image ? await uploadImage(image) : null,
+          image_url: imageUrl ? imageUrl.replace(`${supabaseUrl}/storage/v1/object/public/question_img/`, '') : null,
         },
       ]);
 
@@ -108,18 +128,23 @@ function Forum() {
       alert('Question submitted successfully!');
       setQuestion('');
       setImage(null);
-      setQaData((prev) => [...prev, { question, user_id: user.id }]);
-      reRenderMath();
+      setQaData((prev) => [
+        ...prev,
+        { question, user_id: user.id, image_url: imageUrl },
+      ]);
     }
   };
 
   const uploadImage = async (file) => {
-    const { data, error } = await supabase.storage.from('question_img').upload(`public/${file.name}`, file);
+    const { data, error } = await supabase.storage
+      .from('question_img')
+      .upload(`public/${file.name || 'clipboard-image'}`, file);
     if (error) {
       console.error('Error uploading image:', error);
       return null;
     }
-    return data.path; // Return the uploaded image URL or path
+    // Return the full URL to access the uploaded image
+    return `${supabaseUrl}/storage/v1/object/public/question_img/${data.path}`;
   };
 
   return (
@@ -157,6 +182,11 @@ function Forum() {
               {filteredQuestions.map((qa) => (
                 <div key={qa.id} className="search-result-item">
                   <h3>Q: <Link to={`/question/${qa.id}`}>{qa.question}</Link></h3>
+                  {qa.image_url && (
+                    <div className="question-image">
+                      <img src={qa.image_url} alt="Question related" />
+                    </div>
+                  )}
                   <p>A: <span className="view-answer">See answer</span></p>
                 </div>
               ))}
@@ -166,6 +196,11 @@ function Forum() {
               {qaData.map((qa) => (
                 <div key={qa.id} className="search-result-item">
                   <h3>Q: <Link to={`/question/${qa.id}`}>{qa.question}</Link></h3>
+                  {qa.image_url && (
+                    <div className="question-image">
+                      <img src={qa.image_url} alt="Question related" />
+                    </div>
+                  )}
                   <p>A: <span className="view-answer">See answer</span></p>
                 </div>
               ))}
@@ -198,6 +233,7 @@ function Forum() {
                   className="file-input"
                 />
               </div>
+              {image && <p>Image ready for upload from clipboard!</p>}
               <button type="submit" className="submit-btn">Submit</button>
             </form>
           ) : (
