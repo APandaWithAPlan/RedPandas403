@@ -12,8 +12,6 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-
-
 function AdminDashboard() {
   const navigate = useNavigate(); // Initialize the navigate function
   const { user, login, logout, setUser } = useUser(); // Access setUser from context
@@ -21,33 +19,29 @@ function AdminDashboard() {
   return (
     <div>
       {user && user.is_admin ? (
-        
         <div className="admin-dashboard">
-        <nav className="sidebar">
-          <h2>Admin Settings</h2>
-          <button className="back-button" onClick={() => navigate(-1)}>Back</button> {/* Back button */}
-          <ul>
-            <li><Link to="/admin/user-verification">User Verification Status</Link></li>
-            <li><Link to="/admin/reported-posts">Reported Posts</Link></li>
-            <li><Link to="/admin/reported-users">Reported Users</Link></li>
-          </ul>
-        </nav>
-  
-        <div className="content">
-          <Routes>
-            <Route path="/user-verification" element={<UserVerification />} />
-            <Route path="/reported-posts" element={<ReportedPosts />} />
-            <Route path="/reported-users" element={<ReportedUsers />} />
-          </Routes>
+          <nav className="sidebar">
+            <h2>Admin Settings</h2>
+            <button className="back-button" onClick={() => navigate('/')}>Back</button> {/* Navigate to homepage */}
+            <ul>
+              <li><Link to="/admin/user-verification">User Verification Status</Link></li>
+              <li><Link to="/admin/reported-posts">Reported Posts</Link></li>
+              <li><Link to="/admin/reported-users">Reported Users</Link></li>
+            </ul>
+          </nav>
+
+          <div className="content">
+            <Routes>
+              <Route path="/user-verification" element={<UserVerification />} />
+              <Route path="/reported-posts" element={<ReportedPosts />} />
+              <Route path="/reported-users" element={<ReportedUsers />} />
+            </Routes>
+          </div>
         </div>
-      </div>
-      
       ) : (
         navigate('/')
       )}
     </div>
-    
-
   );
 }
 

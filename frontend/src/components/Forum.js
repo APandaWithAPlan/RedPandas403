@@ -1,15 +1,22 @@
 import { Link, useNavigate } from 'react-router-dom';
 import React, { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { useUser } from './UserContext'; // Import the useUser hook
+import { useUser } from './UserContext';
 import './Forum.css';
+
+const loadMathJax = () => {
+  const script = document.createElement('script');
+  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=AM_CHTML';
+  script.async = true;
+  document.head.appendChild(script);
+};
 
 const supabaseUrl = 'https://ohkvsyqbngdukvqihemh.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oa3ZzeXFibmdkdWt2cWloZW1oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk3MTc5NjgsImV4cCI6MjA0NTI5Mzk2OH0.pw9Ffn_gHRr4shp9V-DgisvdqneBHeUZSmvQ61_ES5Q';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 function Forum() {
-  const { user } = useUser(); // Access user from context
+  const { user, logout } = useUser();
   const [question, setQuestion] = useState('');
   const [image, setImage] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -18,11 +25,10 @@ function Forum() {
   const [qaData, setQaData] = useState([]);
   const navigate = useNavigate();
 
-  const handleNavigateHome = () => {
-    navigate('/'); // Navigate to the homepage
-  };
+  useEffect(() => {
+    loadMathJax();
+  }, []);
 
-  // Fetch questions from Supabase
   useEffect(() => {
     const fetchQuestions = async () => {
       const { data, error } = await supabase.from('questions').select('*');
@@ -30,14 +36,54 @@ function Forum() {
       if (error) {
         console.error('Error fetching questions:', error);
       } else {
-        setQaData(data);
+        const updatedData = data.map((qa) => ({
+          ...qa,
+          image_url: qa.image_url
+            ? `${supabaseUrl}/storage/v1/object/public/question_img/${qa.image_url}`
+            : null,
+        }));
+        setQaData(updatedData);
       }
     };
 
     fetchQuestions();
+
+    // Add a paste event listener to handle images pasted from the clipboard
+    const handlePaste = (e) => {
+      const clipboardItems = e.clipboardData.items;
+      for (let item of clipboardItems) {
+        if (item.type.startsWith('image/')) {
+          const blob = item.getAsFile();
+          setImage(blob); // Set the image as if it were chosen from file input
+          break;
+        }
+      }
+    };
+
+    // Attach the event listener
+    window.addEventListener('paste', handlePaste);
+    
+    // Clean up the event listener on component unmount
+    return () => {
+      window.removeEventListener('paste', handlePaste);
+    };
   }, []);
 
-  // Handle search input change
+  useEffect(() => {
+    if (window.MathJax) {
+      window.MathJax.Hub.Queue(['Typeset', window.MathJax.Hub]);
+    }
+  }, [qaData, filteredQuestions]);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
+
+  const handleNavigateHome = () => {
+    navigate('/');
+  };
+
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
     const filtered = qaData.filter((qa) =>
@@ -47,7 +93,6 @@ function Forum() {
     setSearchSubmitted(false);
   };
 
-  // Handle search form submission
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     const filtered = qaData.filter((qa) =>
@@ -58,7 +103,6 @@ function Forum() {
     setSearchTerm('');
   };
 
-  // Handle question submission
   const handleQuestionSubmit = async (e) => {
     e.preventDefault();
     if (!user) {
@@ -66,13 +110,15 @@ function Forum() {
       return navigate('/login');
     }
 
+    const imageUrl = image ? await uploadImage(image) : null;
+
     const { error } = await supabase
       .from('questions')
       .insert([
         {
           question,
-          user_id: user.id, 
-          image_url: image ? await uploadImage(image) : null, 
+          user_id: user.id,
+          image_url: imageUrl ? imageUrl.replace(`${supabaseUrl}/storage/v1/object/public/question_img/`, '') : null,
         },
       ]);
 
@@ -82,18 +128,23 @@ function Forum() {
       alert('Question submitted successfully!');
       setQuestion('');
       setImage(null);
-      setQaData((prev) => [...prev, { question, user_id: user.id }]);
+      setQaData((prev) => [
+        ...prev,
+        { question, user_id: user.id, image_url: imageUrl },
+      ]);
     }
   };
 
-  // Function to upload image
   const uploadImage = async (file) => {
-    const { data, error } = await supabase.storage.from('images').upload(`public/${file.name}`, file);
+    const { data, error } = await supabase.storage
+      .from('question_img')
+      .upload(`public/${file.name || 'clipboard-image'}`, file);
     if (error) {
       console.error('Error uploading image:', error);
       return null;
     }
-    return data.Key; // Return the uploaded image URL or path
+    // Return the full URL to access the uploaded image
+    return `${supabaseUrl}/storage/v1/object/public/question_img/${data.path}`;
   };
 
   return (
@@ -113,7 +164,7 @@ function Forum() {
           {user ? (
             <>
               <button><Link to="/profile">Profile</Link></button>
-              <button><Link to="/logout">Logout</Link></button>
+              <button onClick={handleLogout}>Logout</button>
             </>
           ) : (
             <>
@@ -131,6 +182,11 @@ function Forum() {
               {filteredQuestions.map((qa) => (
                 <div key={qa.id} className="search-result-item">
                   <h3>Q: <Link to={`/question/${qa.id}`}>{qa.question}</Link></h3>
+                  {qa.image_url && (
+                    <div className="question-image">
+                      <img src={qa.image_url} alt="Question related" />
+                    </div>
+                  )}
                   <p>A: <span className="view-answer">See answer</span></p>
                 </div>
               ))}
@@ -140,6 +196,11 @@ function Forum() {
               {qaData.map((qa) => (
                 <div key={qa.id} className="search-result-item">
                   <h3>Q: <Link to={`/question/${qa.id}`}>{qa.question}</Link></h3>
+                  {qa.image_url && (
+                    <div className="question-image">
+                      <img src={qa.image_url} alt="Question related" />
+                    </div>
+                  )}
                   <p>A: <span className="view-answer">See answer</span></p>
                 </div>
               ))}
@@ -157,7 +218,7 @@ function Forum() {
                   id="question"
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
-                  placeholder="Type your question here..."
+                  placeholder="Type your question here... Use ` for math notation."
                   required
                   className="textarea"
                 />
@@ -172,6 +233,7 @@ function Forum() {
                   className="file-input"
                 />
               </div>
+              {image && <p>Image ready for upload from clipboard!</p>}
               <button type="submit" className="submit-btn">Submit</button>
             </form>
           ) : (

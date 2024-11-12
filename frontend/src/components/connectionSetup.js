@@ -2,7 +2,11 @@
 // Red Pandas - 403 
 // Desc: Goal is to begin a connection when prompted by a user. First, we need access to each connectees camera and mic
 
-// Constants
+// IMPORTS
+import {io} from 'socket.io-client';
+
+
+// CONSTANTS
 let username = null;
 let password = null;
 
@@ -17,7 +21,7 @@ const localVideo = document.querySelector('#local-video');      // local-video a
 const remoteVideo = document.querySelector('#remote-video');    // element ID's
 
 const stunServers = {
-    serverOptions: [{
+    iceServers: [{
         urls: [
             'stun:stun.l.google.com:19302',
             'stun:stun1.l.google.com:19302'
@@ -25,15 +29,17 @@ const stunServers = {
     }]
 };
 
-let mediaOptions = {audio: true, video: true};
 
-// Variables
+// VARIABLES
 let localStream;
 let remoteStream;
 let peerConnection;
 let amICaller = false;
+let mediaOptions = {audio: true, video: true};
 
-// Get the user media
+
+// METHODS
+// get user media
 function fetchUserMedia(desiredTracks) {
     return new Promise(async(resolve, reject) => {
         try {
@@ -118,14 +124,14 @@ async function createPeerConnection(offerObj) {
 }
 
 // add answer description to connection object - last step when creating a connection
-async function addAnswer(offerObj) {
+export async function addAnswer(offerObj) {
     await peerConnection.setRemoteDescription(offerObj.answer);
 }
 
-// INTERACTION FUNCTIONS //
 
+// MAIN
 // initiate a call and send offer to signaling server
-async function call() {
+export async function call() {
     await fetchUserMedia(mediaOptions);
     await createPeerConnection();
     
@@ -155,4 +161,9 @@ async function answerOffer(offerObj) {
         peerConnection.addIceCandidate(candidate);
     }
 }
+
+
+// EXPORTS
+export {localStream, remoteStream};
+export {socket};
 
