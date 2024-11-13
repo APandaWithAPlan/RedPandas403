@@ -1,6 +1,6 @@
 // src/components/Homepage.js
-import { Link, useNavigate } from 'react-router-dom';
-import React, { useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Navbar,
   Group,
@@ -15,9 +15,6 @@ import {
   Container,
   Center,
   Paper,
-  TextInput,
-  Notification,
-  Textarea
 } from '@mantine/core';
 import {
   IconMessageCircle,
@@ -27,44 +24,97 @@ import {
   IconSettings,
   IconLogin,
   IconUserPlus,
-  IconNotes,
-  IconQuestionMark
 } from '@tabler/icons-react';
 import { useUser } from './UserContext';
 import './Homepage.css';
-import pandaprofLogo from './pandaprof.png';
+import pandaprofLogo from './pandaprof.png'; // Import the logo image
+import { socketConnection, fetchUserMedia, createPeerConnection } from './connectionSetup.js';
+import { clientSocketListeners } from './emitAnswers.js';
 
-function Homepage() {
-  const navigate = useNavigate();
+const Homepage = (callStatus, updateCallStatus, localStream, 
+  setLocalStream, remoteStream, setRemoteStream, peerConnection, 
+  setPeerConnection, offerData, setOfferData, userName, setUserName) => {
+
+  // webRTC tracking states
+  const [ typeOfCall, setTypeOfCall ] = useState()
+  const [joined, setJoined] = useState(false)
+  const [availableCalls, setAvailableCalls] = useState([])
+  const navigate = useNavigate();  
+
   const { user, logout } = useUser();
   const [selectedCourse, setSelectedCourse] = useState(null);
-  const [showSuggestSubject, setShowSuggestSubject] = useState(false);
-  const [suggestedSubject, setSuggestedSubject] = useState('');
-  const [notification, setNotification] = useState(null);
+
+  // starts after user clicks the button "join"
+  useEffect(()=>{
+    if(joined){
+        const userName = prompt("Enter username")
+        setUserName(userName)
+        const setCalls = data=>{
+            setAvailableCalls(data)
+            console.log(data)
+        }
+        const socket = socketConnection(userName)
+        socket.on('availableOffers',setCalls)
+        socket.on('newOfferWaiting',setCalls)
+    }
+  },[joined])
+
+  // runs once initCall returns the promise for user media
+  useEffect(()=>{
+    if(callStatus.haveMedia && !peerConnection){
+        // we have media, now we need a connection
+        const { peerConnection, remoteStream } = createPeerConnection(userName,typeOfCall)
+        setPeerConnection(peerConnection)
+        setRemoteStream(remoteStream)
+    }
+  },[callStatus.haveMedia])
+
+  // now that we have peerConnection variables and remoteStream variables, let's wait for ice 
+  // candidates and offers to come in. We'll handle them here
+  useEffect(()=>{
+    if(typeOfCall && peerConnection){
+        const socket = socketConnection(userName)
+        clientSocketListeners(socket,typeOfCall,callStatus, updateCallStatus,peerConnection)
+    }
+  },[typeOfCall,peerConnection])
+
+  // we have the completed offer and ice candidate. Let's jump to another page
+  useEffect(()=>{
+    if(remoteStream && peerConnection){
+        console.log(`Starting call for class: ${selectedCourse}`);
+        navigate(`/${typeOfCall}?token=${Math.random()}`, { state: { selectedCourse } });
+    }
+  },[remoteStream,peerConnection])
+
+  // gets the user media
+  const initCall = async(typeOfCall) => {
+    await fetchUserMedia(callStatus, updateCallStatus, setLocalStream)
+    setTypeOfCall(typeOfCall)
+  }
+
+  const call = async()=>{
+    //call related stuff goes here
+    if (!joined) {
+        setJoined(true);
+    }
+    initCall('offer');
+  }
+
+  const answer = (callData)=>{
+    //answer related stuff goes here
+    initCall('answer')
+    setOfferData(callData)
+  }
 
   const handleLogout = () => {
     logout();
     navigate('/');
   };
 
-  const handleStartCall = () => {
+  /*const handleStartCall = () => {
     console.log(`Starting call for class: ${selectedCourse}`);
     navigate(`/call`, { state: { selectedCourse } });
-  };
-
-  const handleSuggestSubjectSubmit = () => {
-    if (suggestedSubject.trim() === '') {
-      alert('Please enter a subject.');
-      return;
-    }
-    // Here you can send the suggested subject to the backend or handle it as needed
-    // just display a notification for now
-    // Joseph or Nick this will be where your backend integration stuff
-    // Going to need to put the logic in Forum as well
-    setNotification(`Thank you for suggesting: ${suggestedSubject}`);
-    setSuggestedSubject('');
-    setShowSuggestSubject(false);
-  };
+    }; */
 
   // Define subjects and courses
   const subjects = [
@@ -85,8 +135,8 @@ function Homepage() {
   // Navbar links data
   const data = [
     { link: '/forum', label: 'Forum', icon: IconMessageCircle },
-    /*{ link: '/billing', label: 'Feature1', icon: IconReceipt2 },
-    { link: '/security', label: 'Feature2', icon: IconFingerprint },*/
+    { link: '/billing', label: 'Feature1', icon: IconReceipt2 },
+    { link: '/security', label: 'Feature2', icon: IconFingerprint },
   ];
 
   // Navbar links
@@ -124,15 +174,8 @@ function Homepage() {
           <Group position="apart">
             {/* Logo and Title */}
             <Group>
-              <img
-                src={pandaprofLogo}
-                alt="Panda Professor Logo"
-                width={30}
-                height={30}
-                onClick={() => navigate('/')}
-                style={{ cursor: 'pointer' }}
-              />
-              <Title order={3} color="white" style={{ cursor: 'pointer' }} onClick={() => navigate('/')}>
+              <img src={pandaprofLogo} alt="Panda Professor Logo" width={30} height={30} />
+              <Title order={3} color="white">
                 Panda Professor
               </Title>
             </Group>
@@ -141,56 +184,7 @@ function Homepage() {
 
         <Navbar.Section grow mt="lg">
           {links}
-
-          {/* Missing Subject Button */}
-          <UnstyledButton
-            onClick={() => setShowSuggestSubject(!showSuggestSubject)}
-            sx={(theme) => ({
-              display: 'flex',
-              alignItems: 'center',
-              width: '100%',
-              padding: theme.spacing.sm,
-              borderRadius: theme.radius.sm,
-              color: theme.colors.gray[4],
-              '&:hover': {
-                backgroundColor: theme.colors.red[7],
-                color: theme.white,
-              },
-            })}
-          >
-            <ThemeIcon variant="light" color="red" size="lg">
-              <IconQuestionMark size={20} />
-            </ThemeIcon>
-            <Text size="sm" ml="md">
-              New Subject Submission
-            </Text>
-          </UnstyledButton>
-
-          {/* Suggest Subject Form */}
-          {showSuggestSubject && (
-            <Stack spacing="sm" mt="sm">
-              <Textarea
-                placeholder="Suggest a subject . . . "
-                value={suggestedSubject}
-                onChange={(e) => setSuggestedSubject(e.target.value)}
-                autosize
-                minRows={3}
-                maxRows={6}
-                sx={{
-                  textarea: {
-                    backgroundColor: '#1d1d1d',
-                    color: 'white',
-                    borderColor: '#555',
-                  },
-                }}
-              />
-              <Button color="red" onClick={handleSuggestSubjectSubmit}>
-                Submit
-              </Button>
-            </Stack>
-          )}
         </Navbar.Section>
-          
 
         {/* Settings and Logout Section */}
         <Navbar.Section>
@@ -263,17 +257,6 @@ function Homepage() {
         size="lg"
         style={{ flex: 1, backgroundColor: '#1d1d1d', color: 'white' }}
       >
-        {notification && (
-          <Notification
-            color="red"
-            title="Thank you!"
-            onClose={() => setNotification(null)}
-            sx={{ position: 'fixed', top: 20, right: 20 }}
-          >
-            {notification}
-          </Notification>
-        )}
-
         {user ? (
           <Paper
             shadow="md"
@@ -285,12 +268,16 @@ function Homepage() {
             <Title order={2} align="center" color="red" mb="md">
               Select a Subject
             </Title>
-            <Accordion multiple variant="separated" sx={{ maxWidth: 600, margin: '0 auto' }}>
+            <Accordion
+              multiple
+              variant="separated"
+              sx={{ maxWidth: 600, margin: '0 auto' }}
+            >
               {subjects.map((subject) => (
                 <Accordion.Item value={subject.name} key={subject.name}>
                   <Accordion.Control
                     style={{
-                      backgroundColor: '#1d1d1d',
+                      backgroundColor: '#1d1d1d', // Same as main content background
                       color: 'white',
                     }}
                   >
@@ -319,15 +306,31 @@ function Homepage() {
             </Accordion>
 
             {selectedCourse && (
-              <Center mt="xl" style={{ flexDirection: 'column' }}>
+              <Center mt="xl">
                 <Title order={3} align="center" mt="md">
                   Selected Class: {selectedCourse}
                 </Title>
-                <Button mt="md" color="red" onClick={handleStartCall} fullWidth>
+                <Button mt="md" color="red" onClick={call} fullWidth>
                   Start Call
                 </Button>
               </Center>
             )}
+              <Center mt="xl">
+                <Title order={3} align="center" mt="md">
+                  Available Calls
+                </Title>
+                {availableCalls.map((callData, i) => (
+                <Button
+                    key={i}
+                    mt="md"
+                    color="yellow"
+                    onClick={() => answer(callData)}
+                    fullWidth
+                >
+                Answer Call From {callData.offererUserName}
+                </Button>
+  ))}
+</Center>
           </Paper>
         ) : (
           <Paper
@@ -335,7 +338,7 @@ function Homepage() {
             radius="md"
             p="xl"
             withBorder
-            style={{ backgroundColor: '#2c2c2c', color: 'white' }}
+            style={{ backgroundColor: '#2c2c2c', color: 'white' }} // Match navbar color
           >
             <Center>
               <Title order={2} align="center" color="red" mb="md">
@@ -343,8 +346,8 @@ function Homepage() {
               </Title>
             </Center>
             <Text align="center" mt="md">
-              Explore tutor experts and other educational features. Sign up now and become part of
-              our community!
+              Explore tutor experts and other educational features. Sign up now and become part
+              of our community!
             </Text>
             <Center mt="lg">
               <Button component={Link} to="/signup" color="red" size="lg">

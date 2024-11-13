@@ -7,20 +7,28 @@ import {io} from 'socket.io-client';
 
 
 // CONSTANTS
-let username = null;
-let password = null;
+let userName;
+let password;
 
-const socket = io.connect('https://localhost:3000/', {
-    auth: {
-        username: "bbays2024",
-        password: "softwaredesign"
+let socket;
+const socketConnection = (userName) => {
+    if(socket && socket.connected) {
+        return socket
+    }else {
+        socket = io.connect('http://localhost:3000/', {
+            auth: {
+                userName: "bbays2024",
+                password: "softwaredesign"
+            }
+        });
+        return socket;
     }
-})
+}
 
-const localVideo = document.querySelector('#local-video');      // local-video and remote-video are variables that represent HTML 
-const remoteVideo = document.querySelector('#remote-video');    // element ID's
+//const localVideo = document.querySelector('#local-video');      // local-video and remote-video are variables that represent HTML 
+//const remoteVideo = document.querySelector('#remote-video');    // element ID's
 
-const stunServers = {
+let stunServers = {
     iceServers: [{
         urls: [
             'stun:stun.l.google.com:19302',
@@ -31,21 +39,25 @@ const stunServers = {
 
 
 // VARIABLES
-let localStream;
-let remoteStream;
-let peerConnection;
-let amICaller = false;
+//let localStream;
+//let remoteStream;
+//let peerConnection;
+//let amICaller = false;
 let mediaOptions = {audio: true, video: true};
 
 
 // METHODS
 // get user media
-function fetchUserMedia(desiredTracks) {
+const fetchUserMedia = (callStatus, updateCallStatus, setLocalStream) => {
     return new Promise(async(resolve, reject) => {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia(desiredTracks);
-            localVideo.srcObject = stream;
-            localStream = stream;
+            const stream = await navigator.mediaDevices.getUserMedia({audio: true, video: true});
+            const copyCallStatus = {...callStatus}
+            copyCallStatus.haveMedia = true //signals to the app that we have media
+            copyCallStatus.videoEnabled = null //init both to false, you can init to true
+            copyCallStatus.audioEnabled = false
+            updateCallStatus(copyCallStatus)
+            setLocalStream(stream)
             resolve();
         } catch(err) {
             console.log(err);
@@ -79,19 +91,18 @@ function updateDevices(camerasAvailable, micsAvailable) {
 }
 
 // Create a peer connection using STUN servers
-async function createPeerConnection(offerObj) {
-    // offerObj will not be passed through when a user initiates a call. This variable
-    // will only exist after some sort of offer has been created.
-    return new Promise(async(resolve, reject) => {
+const createPeerConnection = (userName, typeOfCall) => {
+    const token = 312
+    const socket = socketConnection(userName)
+    try {
         // setup connection to remote variables
-        peerConnection = await new RTCPeerConnection(stunServers);
-        remoteStream = new MediaStream();
-        remoteVideo.srcObject = remoteStream;
+        const peerConnection = new RTCPeerConnection(stunServers);
+        const remoteStream = new MediaStream();
 
         // add tracks for the local stream
-        for (const track of localStream.getTracks()) {
-            peerConnection.addTrack(track, localStream);
-        }
+        //for (const track of localStream.getTracks()) {
+        //    peerConnection.addTrack(track, localStream);
+        //}
 
         // listen for ice candidates, and if found, send to signaling server
         peerConnection.addEventListener('icecandidate', (event) => {
@@ -99,8 +110,8 @@ async function createPeerConnection(offerObj) {
             if (event.candidate) {
                 socket.emit('sendIceCandidateToSignalingServer', {
                     iceCandidate: event.candidate,
-                    iceUserName: username,
-                    amICaller
+                    iceUserName: userName,
+                    amICaller: typeOfCall === "offer"
                 })
             }
         })
@@ -115,23 +126,29 @@ async function createPeerConnection(offerObj) {
 
         // if this is the answerer accepting the call from the offerer, we need to use the offer
         // object to set the remote description of the peer connection
-        if (offerObj) {
-            peerConnection.setRemoteDescription(offerObj.offer);
-        }
+        //if (offerObj) {
+        //    peerConnection.setRemoteDescription(offerObj.offer);
+        //}
 
-        resolve();
-    })
+        return ({
+            peerConnection,
+            remoteStream
+        })
+    } catch(err) {
+        console.log(err)
+    }
 }
 
 // add answer description to connection object - last step when creating a connection
-export async function addAnswer(offerObj) {
+/*
+async function addAnswer(offerObj) {
     await peerConnection.setRemoteDescription(offerObj.answer);
 }
 
 
 // MAIN
 // initiate a call and send offer to signaling server
-export async function call() {
+async function call() {
     await fetchUserMedia(mediaOptions);
     await createPeerConnection();
     
@@ -160,10 +177,12 @@ async function answerOffer(offerObj) {
     for (const candidate of offerIceCandidate) {
         peerConnection.addIceCandidate(candidate);
     }
-}
+} */
 
 
 // EXPORTS
-export {localStream, remoteStream};
+//export {localStream, remoteStream};
 export {socket};
+export { socketConnection, stunServers, fetchUserMedia };
+export { createPeerConnection };
 

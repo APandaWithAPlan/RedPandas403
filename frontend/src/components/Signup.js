@@ -16,8 +16,9 @@ import {
   Stack,
   Group,
   Center,
+  FileInput,
 } from '@mantine/core';
-import { IconAlertCircle, IconCheck } from '@tabler/icons-react';
+import { IconAlertCircle, IconCheck, IconUpload } from '@tabler/icons-react';
 
 // Temporarily hardcoded Supabase credentials
 const supabaseUrl = 'https://ohkvsyqbngdukvqihemh.supabase.co';
@@ -33,6 +34,7 @@ const Signup = () => {
   const [password, setPassword] = useState('');
   const [verifyPassword, setVerifyPassword] = useState('');
   const [role, setRole] = useState('');
+  const [file, setFile] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -57,7 +59,7 @@ const Signup = () => {
       const verificationToken = uuidv4();
       const isTutor = role === 'tutor';
 
-      const { error } = await supabase
+      const { data: userData, error: userError } = await supabase
         .from('users')
         .insert([
           {
@@ -70,11 +72,32 @@ const Signup = () => {
             verification_token: verificationToken,
             is_tutor: isTutor,
           },
-        ]);
+        ])
+        .select();
 
-      if (error) {
-        setErrorMessage(error.message || 'Account creation failed.');
+      if (userError || !userData || userData.length === 0) {
+        setErrorMessage(userError.message || 'Account creation failed.');
       } else {
+        const userId = userData[0].id;
+
+        // If tutor and file exists, upload the file to the bucket and save metadata
+        if (isTutor && file) {
+          const { data: fileData, error: fileError } = await supabase.storage
+            .from('tutor_documents')
+            .upload(`documents/${userId}/${file.name}`, file);
+
+          if (fileError) {
+            console.error('Error uploading file:', fileError);
+            setErrorMessage('Failed to upload file.');
+          } else {
+            // Save document metadata
+            const documentUrl = fileData.path;
+            await supabase.from('tutor_documents').insert([
+              { user_id: userId, document_url: documentUrl }
+            ]);
+          }
+        }
+
         await sendVerificationEmail(email, verificationToken);
         setSuccessMessage('Account created! Please check your email to verify your account.');
         setTimeout(() => navigate('/login'), 3000);
@@ -91,9 +114,7 @@ const Signup = () => {
     try {
       const response = await fetch('/api/sendVerificationEmail', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ receiverEmail: email, verificationToken: token }),
       });
 
@@ -103,8 +124,7 @@ const Signup = () => {
         throw new Error('Failed to send verification email');
       }
 
-      const data = await response.json();
-      console.log(data.message);
+      console.log('Verification email sent');
     } catch (error) {
       console.error('Error in sendVerificationEmail:', error.message);
       setErrorMessage('Failed to send verification email.');
@@ -196,6 +216,18 @@ const Signup = () => {
               <Radio value="student" label="Student" />
               <Radio value="tutor" label="Tutor" />
             </Radio.Group>
+
+            {/* File Upload for Tutors */}
+            {role === 'tutor' && (
+              <FileInput
+                placeholder="Upload your credentials"
+                icon={<IconUpload size={16} />}
+                onChange={(file) => setFile(file)}
+                label="Credentials File"
+                accept=".pdf,.doc,.docx,.jpg,.png"
+                required
+              />
+            )}
 
             <Button type="submit" color="red" fullWidth loading={loading}>
               {loading ? 'Creating...' : 'Signup'}
