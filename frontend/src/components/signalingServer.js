@@ -1,6 +1,7 @@
 // Dependencies
 const fs = require('fs');
 const https = require('https');
+const http = require('http');
 const express = require('express');
 const socketio = require('socket.io');
 const app = express();
@@ -14,10 +15,10 @@ const serverAccess = {
 };
 
 // Servers
-const expressServer = https.createServer(serverAccess, app);
+const expressServer = http.createServer(serverAccess, app);
 const io = socketio(expressServer, {
         cors : {
-            origin: ["https://localhost"],
+            origin: ["http://localhost"],
             methods: ["GET", "POST"]
         }
     }
@@ -33,7 +34,7 @@ expressServer.listen(port);
 // handle connection events
 io.on('connection', (socket) => {
     // pull authentication from connectionSetup
-    const username = socket.handshake.auth.username;
+    const userName = socket.handshake.auth.userName;
     const password = socket.handshake.auth.password;
 
     // password handling
@@ -45,7 +46,7 @@ io.on('connection', (socket) => {
     // track clients
     clientsConnected.push({
         socketId: socket.id,
-        username
+        userName
     })
 
     // emit any available offers
@@ -56,7 +57,7 @@ io.on('connection', (socket) => {
     // push any offers to the callee
     socket.on('newOffer', (newOffer) =>{
         offers.push({
-            offererUserName: username,
+            offererUserName: userName,
             offer: newOffer,
             offererIceCandidates: [],
             answererUserName: null,
@@ -77,6 +78,8 @@ io.on('connection', (socket) => {
             console.log("There is no callerClient (signalingServer.js");
         }
 
+        const socketIdToAnswer = callerClient.socketId;
+
         // find the offer that needs to be updated, given new offerObj information
         const offerToUpdate = offers.find(offer=>offer.offererUserName === offerObj.offererUserName);
         if (!offerToUpdate) {
@@ -87,16 +90,16 @@ io.on('connection', (socket) => {
         // write data recieved from offerObj to offerToUpdate array in current file
         ackFunction(offerToUpdate, offererIceCandidates);
         offerToUpdate.answer = offerObj.answer;
-        offerToUpdate.offererUserName = username;
+        offerToUpdate.answererUserName = username;
 
         // emit to a room (need the socket ID of the offer in order to send)
-        socket.to(callerClient.socketId).emit('answerResponse', offerToUpdate);
+        socket.to(socketIdToAnswer).emit('answerResponse', offerToUpdate);
     })
     
     // send ice candidates from caller to callee
     socket.on('sendIceCandidateToSignalingServer', (iceCandidateObj) => {
         const amICaller = iceCandidateObj.amICaller;
-        const iceUserName = iceCandiateObj.iceUserName;
+        const iceUserName = iceCandidateObj.iceUserName;
         const iceCandidate = iceCandidateObj.iceCandidate;
 
         if (amICaller) {
@@ -133,5 +136,10 @@ io.on('connection', (socket) => {
                 console.log("Signaling server received ice candidate from answerer, could not find offerer.")
             }
         }
+    })
+    socket.on('disconnect',()=>{
+        const offerToClear = offers.findIndex(o=>o.offererUserName === username)
+        offers.splice(offerToClear,1)
+        socket.emit('availableOffers',offers);
     })
 })
