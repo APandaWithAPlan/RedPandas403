@@ -21,6 +21,8 @@ import {
   ScrollArea,
   Menu,
   UnstyledButton,
+  Image,
+  Center,
 } from '@mantine/core';
 import {
   IconSearch,
@@ -33,11 +35,21 @@ import {
   IconSettings,
   IconLogin,
   IconUserPlus,
+  IconQuestionMark, // Added IconQuestionMark
 } from '@tabler/icons-react';
 import pandaprofLogo from './pandaprof.png';
 
+const loadMathJax = () => {
+  const script = document.createElement('script');
+  script.src =
+    'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=AM_CHTML';
+  script.async = true;
+  document.head.appendChild(script);
+};
+
 const supabaseUrl = 'https://ohkvsyqbngdukvqihemh.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oa3ZzeXFibmdkdWt2cWloZW1oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk3MTc5NjgsImV4cCI6MjA0NTI5Mzk2OH0.pw9Ffn_gHRr4shp9V-DgisvdqneBHeUZSmvQ61_ES5Q';
+const supabaseAnonKey =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oa3ZzeXFibmdkdWt2cWloZW1oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk3MTc5NjgsImV4cCI6MjA0NTI5Mzk2OH0.pw9Ffn_gHRr4shp9V-DgisvdqneBHeUZSmvQ61_ES5Q';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 function Forum() {
@@ -49,35 +61,75 @@ function Forum() {
   const [filteredQuestions, setFilteredQuestions] = useState([]);
   const [searchSubmitted, setSearchSubmitted] = useState(false);
   const [qaData, setQaData] = useState([]);
+  const [showSuggestSubject, setShowSuggestSubject] = useState(false);
+  const [suggestedSubject, setSuggestedSubject] = useState('');
+  const [notification, setNotification] = useState(null);
 
   const handleLogout = () => {
     logout();
     navigate('/');
   };
 
+  const handleSuggestSubjectSubmit = () => {
+    if (suggestedSubject.trim() === '') {
+      alert('Please enter a subject.');
+      return;
+    }
+    // Handle submission (e.g., send to backend)
+    setNotification(`Thank you for suggesting: ${suggestedSubject}`);
+    setSuggestedSubject('');
+    setShowSuggestSubject(false);
+  };
+
+  useEffect(() => {
+    loadMathJax();
+  }, []);
+
   useEffect(() => {
     const fetchQuestions = async () => {
       const { data, error } = await supabase.from('questions').select('*');
+
       if (error) {
         console.error('Error fetching questions:', error);
       } else {
-        setQaData(data);
+        const updatedData = data.map((qa) => ({
+          ...qa,
+          image_url: qa.image_url
+            ? `${supabaseUrl}/storage/v1/object/public/question_img/${qa.image_url}`
+            : null,
+        }));
+        setQaData(updatedData);
       }
     };
-    fetchQuestions();
-  }, []);
 
-  // Load MathJax script
-  useEffect(() => {
-    const script = document.createElement('script');
-    script.src =
-      'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/latest.js?config=AM_CHTML';
-    script.async = true;
-    document.body.appendChild(script);
+    fetchQuestions();
+
+    // Add a paste event listener to handle images pasted from the clipboard
+    const handlePaste = (e) => {
+      const clipboardItems = e.clipboardData.items;
+      for (let item of clipboardItems) {
+        if (item.type.startsWith('image/')) {
+          const blob = item.getAsFile();
+          setImage(blob); // Set the image as if it were chosen from file input
+          break;
+        }
+      }
+    };
+
+    // Attach the event listener
+    window.addEventListener('paste', handlePaste);
+
+    // Clean up the event listener on component unmount
     return () => {
-      document.body.removeChild(script);
+      window.removeEventListener('paste', handlePaste);
     };
   }, []);
+
+  useEffect(() => {
+    if (window.MathJax) {
+      window.MathJax.Hub.Queue(['Typeset', window.MathJax.Hub]);
+    }
+  }, [qaData, filteredQuestions]);
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
@@ -105,13 +157,23 @@ function Forum() {
       return navigate('/login');
     }
 
-    const { error } = await supabase.from('questions').insert([
-      {
-        question,
-        user_id: user.id,
-        image_url: image ? await uploadImage(image) : null,
-      },
-    ]);
+    const imageUrl = image ? await uploadImage(image) : null;
+
+    const { data: insertedData, error } = await supabase
+      .from('questions')
+      .insert([
+        {
+          question,
+          user_id: user.id,
+          image_url: imageUrl
+            ? imageUrl.replace(
+                `${supabaseUrl}/storage/v1/object/public/question_img/`,
+                ''
+              )
+            : null,
+        },
+      ])
+      .select('*');
 
     if (error) {
       console.error('Error submitting question:', error);
@@ -119,26 +181,34 @@ function Forum() {
       alert('Question submitted successfully!');
       setQuestion('');
       setImage(null);
-      setQaData((prev) => [...prev, { question, user_id: user.id }]);
+      setQaData((prev) => [
+        ...prev,
+        {
+          ...insertedData[0],
+          image_url: imageUrl,
+        },
+      ]);
     }
   };
 
   const uploadImage = async (file) => {
     const { data, error } = await supabase.storage
-      .from('images')
-      .upload(`public/${file.name}`, file);
+      .from('question_img')
+      .upload(`public/${file.name || 'clipboard-image'}`, file);
+
     if (error) {
       console.error('Error uploading image:', error);
       return null;
     }
-    return data.Key;
+    // Return the full URL to access the uploaded image
+    return `${supabaseUrl}/storage/v1/object/public/question_img/${data.path}`;
   };
 
   // Navbar links data
   const data = [
     { link: '/forum', label: 'Forum', icon: IconMessageCircle },
-    { link: '/billing', label: 'Feature1', icon: IconReceipt2 },
-    { link: '/security', label: 'Feature2', icon: IconFingerprint },
+    /*{ link: '/billing', label: 'Feature1', icon: IconReceipt2 },
+    { link: '/security', label: 'Feature2', icon: IconFingerprint },*/
   ];
 
   // Navbar links
@@ -189,9 +259,10 @@ function Forum() {
       }}
     >
       {/* Navbar Section */}
-      <Navbar width={{ base: 250 }} p="md" sx={{ backgroundColor: '#2c2c2c' }}>
+      <Navbar width={{ base: 300 }} p="md" sx={{ backgroundColor: '#2c2c2c' }}>
         <Navbar.Section>
           <Group position="apart">
+            {/* Logo and Title */}
             <Group>
               <img
                 src={pandaprofLogo}
@@ -204,8 +275,8 @@ function Forum() {
               <Title
                 order={3}
                 color="white"
-                onClick={() => navigate('/')}
                 style={{ cursor: 'pointer' }}
+                onClick={() => navigate('/')}
               >
                 Panda Professor
               </Title>
@@ -215,6 +286,54 @@ function Forum() {
 
         <Navbar.Section grow mt="lg">
           {links}
+
+          {/* Missing Subject Button */}
+          <UnstyledButton
+            onClick={() => setShowSuggestSubject(!showSuggestSubject)}
+            sx={(theme) => ({
+              display: 'flex',
+              alignItems: 'center',
+              width: '100%',
+              padding: theme.spacing.sm,
+              borderRadius: theme.radius.sm,
+              color: theme.colors.gray[4],
+              '&:hover': {
+                backgroundColor: theme.colors.red[7],
+                color: theme.white,
+              },
+            })}
+          >
+            <ThemeIcon variant="light" color="red" size="lg">
+              <IconQuestionMark size={20} />
+            </ThemeIcon>
+            <Text size="sm" ml="md">
+              New Subject Submission
+            </Text>
+          </UnstyledButton>
+
+          {/* Suggest Subject Form */}
+          {showSuggestSubject && (
+            <Stack spacing="sm" mt="sm">
+              <Textarea
+                placeholder="Suggest a subject . . . "
+                value={suggestedSubject}
+                onChange={(e) => setSuggestedSubject(e.target.value)}
+                autosize
+                minRows={3}
+                maxRows={6}
+                sx={{
+                  textarea: {
+                    backgroundColor: '#1d1d1d',
+                    color: 'white',
+                    borderColor: '#555',
+                  },
+                }}
+              />
+              <Button color="red" onClick={handleSuggestSubjectSubmit}>
+                Submit
+              </Button>
+            </Stack>
+          )}
         </Navbar.Section>
 
         {/* Settings and Logout Section */}
@@ -303,6 +422,17 @@ function Forum() {
           margin: '0 auto',
         }}
       >
+        {notification && (
+          <Notification
+            color="red"
+            title="Thank you!"
+            onClose={() => setNotification(null)}
+            sx={{ position: 'fixed', top: 20, right: 20 }}
+          >
+            {notification}
+          </Notification>
+        )}
+
         {/* Center Section for Search and Questions */}
         <div
           style={{
@@ -365,6 +495,15 @@ function Forum() {
                       View answer
                     </Anchor>
                   </Group>
+                  {qa.image_url && (
+                    <Image
+                      src={qa.image_url}
+                      alt="Question Image"
+                      radius="md"
+                      mt="md"
+                      withPlaceholder
+                    />
+                  )}
                 </Card>
               ))}
             </Stack>
@@ -392,7 +531,7 @@ function Forum() {
             <form onSubmit={handleQuestionSubmit}>
               <Stack spacing="md" mt="lg">
                 <Textarea
-                  placeholder="Type your question here..."
+                  placeholder="Type your question here... Use ` for math notation."
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
                   required
@@ -413,6 +552,11 @@ function Forum() {
                     input: { backgroundColor: '#1d1d1d', color: 'white' },
                   }}
                 />
+                {image && (
+                  <Text color="red" size="sm">
+                    Image ready for upload!
+                  </Text>
+                )}
                 <Button
                   type="submit"
                   color="red"
