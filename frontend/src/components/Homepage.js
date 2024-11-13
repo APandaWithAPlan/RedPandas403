@@ -1,6 +1,6 @@
 // src/components/Homepage.js
-import { Link, useNavigate } from 'react-router-dom';
-import React, { useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Navbar,
   Group,
@@ -28,21 +28,93 @@ import {
 import { useUser } from './UserContext';
 import './Homepage.css';
 import pandaprofLogo from './pandaprof.png'; // Import the logo image
+import { socketConnection, fetchUserMedia, createPeerConnection } from './connectionSetup.js';
+import { clientSocketListeners } from './emitAnswers.js';
 
-function Homepage() {
-  const navigate = useNavigate();
+const Homepage = (callStatus, updateCallStatus, localStream, 
+  setLocalStream, remoteStream, setRemoteStream, peerConnection, 
+  setPeerConnection, offerData, setOfferData, userName, setUserName) => {
+
+  // webRTC tracking states
+  const [ typeOfCall, setTypeOfCall ] = useState()
+  const [joined, setJoined] = useState(false)
+  const [availableCalls, setAvailableCalls] = useState([])
+  const navigate = useNavigate();  
+
   const { user, logout } = useUser();
   const [selectedCourse, setSelectedCourse] = useState(null);
+
+  // starts after user clicks the button "join"
+  useEffect(()=>{
+    if(joined){
+        const userName = prompt("Enter username")
+        setUserName(userName)
+        const setCalls = data=>{
+            setAvailableCalls(data)
+            console.log(data)
+        }
+        const socket = socketConnection(userName)
+        socket.on('availableOffers',setCalls)
+        socket.on('newOfferWaiting',setCalls)
+    }
+  },[joined])
+
+  // runs once initCall returns the promise for user media
+  useEffect(()=>{
+    if(callStatus.haveMedia && !peerConnection){
+        // we have media, now we need a connection
+        const { peerConnection, remoteStream } = createPeerConnection(userName,typeOfCall)
+        setPeerConnection(peerConnection)
+        setRemoteStream(remoteStream)
+    }
+  },[callStatus.haveMedia])
+
+  // now that we have peerConnection variables and remoteStream variables, let's wait for ice 
+  // candidates and offers to come in. We'll handle them here
+  useEffect(()=>{
+    if(typeOfCall && peerConnection){
+        const socket = socketConnection(userName)
+        clientSocketListeners(socket,typeOfCall,callStatus, updateCallStatus,peerConnection)
+    }
+  },[typeOfCall,peerConnection])
+
+  // we have the completed offer and ice candidate. Let's jump to another page
+  useEffect(()=>{
+    if(remoteStream && peerConnection){
+        console.log(`Starting call for class: ${selectedCourse}`);
+        navigate(`/${typeOfCall}?token=${Math.random()}`, { state: { selectedCourse } });
+    }
+  },[remoteStream,peerConnection])
+
+  // gets the user media
+  const initCall = async(typeOfCall) => {
+    await fetchUserMedia(callStatus, updateCallStatus, setLocalStream)
+    setTypeOfCall(typeOfCall)
+  }
+
+  const call = async()=>{
+    //call related stuff goes here
+    if (!joined) {
+        setJoined(true);
+    }
+    initCall('offer');
+  }
+
+  const answer = (callData)=>{
+    //answer related stuff goes here
+    initCall('answer')
+    setOfferData(callData)
+  }
 
   const handleLogout = () => {
     logout();
     navigate('/');
   };
 
-  const handleStartCall = () => {
+  /*const handleStartCall = () => {
     console.log(`Starting call for class: ${selectedCourse}`);
     navigate(`/call`, { state: { selectedCourse } });
-  };
+    }; */
 
   // Define subjects and courses
   const subjects = [
@@ -238,11 +310,27 @@ function Homepage() {
                 <Title order={3} align="center" mt="md">
                   Selected Class: {selectedCourse}
                 </Title>
-                <Button mt="md" color="red" onClick={handleStartCall} fullWidth>
+                <Button mt="md" color="red" onClick={call} fullWidth>
                   Start Call
                 </Button>
               </Center>
             )}
+              <Center mt="xl">
+                <Title order={3} align="center" mt="md">
+                  Available Calls
+                </Title>
+                {availableCalls.map((callData, i) => (
+                <Button
+                    key={i}
+                    mt="md"
+                    color="yellow"
+                    onClick={() => answer(callData)}
+                    fullWidth
+                >
+                Answer Call From {callData.offererUserName}
+                </Button>
+  ))}
+</Center>
           </Paper>
         ) : (
           <Paper

@@ -1,75 +1,74 @@
 // src/components/Call.js
 import React, { useState, useRef, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { addAnswer } from './connectionSetup.js';
-import { localStream, remoteStream } from './connectionSetup.js';
-import { socket } from './connectionSetup.js';
-import { call } from './connectionSetup.js';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import {socketConnection} from './connectionSetup.js';
 import './Call.css';
 
 
 
-const Call = ()  => {
+const Call = ({remoteStream, localStream,peerConnection,callStatus,updateCallStatus,userName})  => {
+
     // Access selectedCourse from location state
-    const [offers, setOffers] = useState([]); 
     const [isMicOn, setIsMicOn] = useState(true);
     const [isCameraOn, setIsCameraOn] = useState(true);
-    const [chatLogs, setChatLogs] = useState([
-    { user: 'ExampleUser', message: 'Example Message' },
-    ]);
+    const [chatLogs, setChatLogs] = useState([{ user: 'ExampleUser', message: 'Example Message' },]);
     const [currentMessage, setCurrentMessage] = useState('');
 
-    // updates the state of the streams with every render
-    const localBinder = useRef(null);
-    const remoteBinder = useRef(null);
+    const remoteFeedEl = useRef(null); //this is a React ref to a dom element, so we can interact with it the React way
+    const localFeedEl = useRef(null); //this is a React ref to a dom element, so we can interact with it the React way
+    const navigate = useNavigate();
+    //const [ videoMessage, setVideoMessage ] = useState("Please enable video to start!")
+    const [ offerCreated, setOfferCreated ] = useState(false)
 
     const location = useLocation();
     const { selectedCourse } = location.state || {};
 
-    const connectToButtons = (offers) => {
-        const offerContainer = document.getElementByID('offer-buttons');
-        offerContainer.innerHTML = '';
-
-        // create an answer button for every offer
-        offers.forEach((offer) => {
-            const answerButton = document.createElement('button');
-            answerButton.textContent('Answer');
-            answerButton.addEventListener('click', () => {
-                addAnswer(offer);
-            });
-            offerContainer.appendChild(answerButton);
-        });
-    };
-
-    useEffect(() => {
-        if (localBinder.current) {
-            localBinder.current.srcObject = localStream;
+    //send back to home if no localStream
+    useEffect(()=>{
+        if(!localStream){
+            navigate(`/`)
+        }else{
+            //set video tags
+            remoteFeedEl.current.srcObject = remoteStream
+            localFeedEl.current.srcObject = localStream            
         }
-        if (remoteBinder.current) {
-            remoteBinder.current.srcObject = remoteStream;
+    },[])
+    
+    //set video tags
+    // useEffect(()=>{
+    //     remoteFeedEl.current.srcObject = remoteStream
+    //     localFeedEl.current.srcObject = localStream
+    // },[])
+
+    //once the user has shared video, start WebRTC'ing :)
+    useEffect(()=>{
+        const shareVideoAsync = async()=>{
+            const offer = await peerConnection.createOffer()
+            peerConnection.setLocalDescription(offer)
+            //we can now start collecing ice candidates!
+            // we need to emit the offer to the server
+            const socket = socketConnection(userName)
+            socket.emit('newOffer',offer)
+            setOfferCreated(true) //so that our useEffect doesn't make an offer again
+            console.log("created offer, setLocalDesc, emitted offer, updated videoMessage")
         }
-    }, [localStream, remoteStream]);
+        if(!offerCreated && callStatus.videoEnabled){
+            //CREATE AN OFFER!!
+            console.log("We have video and no offer... making offer")
+            shareVideoAsync()
+        }
+    },[callStatus.videoEnabled,offerCreated])
+    
 
-    // event handlers
-    useEffect(() => {
-        socket.on('newOfferAwaiting', (offer) => {
-            setOffers((pastOffers) => [...pastOffers, offer]);
-            connectToButtons(offers);
-        });
-    }, [offers]);
-
-    useEffect(() => {
-        socket.on('availableOffers', (offers) => {
-            setOffers(offers);
-            connectToButtons(offers);
-        });
-    }, [offers]);
-
-    useEffect(() => {
-        socket.on('answerResponse', (offerObj) => {
-            addAnswer(offerObj);
-        })
-    }, []);
+    useEffect(()=>{
+        const addAnswerAsync = async()=>{
+            await peerConnection.setRemoteDescription(callStatus.answer)
+            console.log("Answer added!!")
+        }
+        if(callStatus.answer){
+            addAnswerAsync()
+        }
+    },[callStatus])
 
     // Placeholder functions for button actions
     const toggleMic = () => {
@@ -78,30 +77,31 @@ const Call = ()  => {
     };
 
     const toggleCamera = () => {
-    setIsCameraOn(!isCameraOn);
-    // Add WebRTC code to handle camera toggle
-    };
-
-    const endCall = () => {
-    // Add functionality to end the call and clean up resources
+        setIsCameraOn(!isCameraOn);
+        // Add WebRTC code to handle camera toggle
     };
 
     const sendMessage = () => {
-    if (currentMessage.trim() === '') return; // Avoid sending empty messages
+        if (currentMessage.trim() === '') return; // Avoid sending empty messages
 
-    setChatLogs([...chatLogs, { user: 'You', message: currentMessage }]);
-    setCurrentMessage(''); // Clear the input field
+        setChatLogs([...chatLogs, { user: 'You', message: currentMessage }]);
+        setCurrentMessage(''); // Clear the input field
     };
 
     // Handle "Enter" key press for sending messages
     const handleKeyPress = (e) => {
-    if (e.key === 'Enter') sendMessage();
+        if (e.key === 'Enter') sendMessage();
+    };
+
+    // End the call button functionality
+    const endCall = () => {
+        // TODO
     };
 
     // Handle missing selectedCourse
     if (!selectedCourse) {
-    return <div>Please select a course from the homepage.</div>;
-    }
+        return <div>Please select a course from the homepage.</div>;
+    };
 
     return (
     <div className="call-container">
@@ -110,7 +110,7 @@ const Call = ()  => {
                 <div className="video-box">
                     <video
                         id="local-video"
-                        ref={localBinder}
+                        ref={localFeedEl}
                         autoPlay
                         playsInline
                         className="video-element"
@@ -123,7 +123,7 @@ const Call = ()  => {
                 <div className="video-box">
                     <video
                         id="remote-video"
-                        ref={remoteBinder}
+                        ref={remoteFeedEl}
                         autoPlay
                         playsInline
                         className="video-element"
@@ -165,9 +165,6 @@ const Call = ()  => {
         <div className="controls">
             <button onClick={() => console.log('Time placeholder')} className="control-button">
                 Time
-            </button>
-            <button onClick={call} classname="startCall"> 
-                Start Call
             </button>
             <button onClick={toggleMic} className="control-button">
                 {isMicOn ? 'Mic On' : 'Mic Off'}
