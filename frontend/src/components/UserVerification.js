@@ -14,11 +14,12 @@ function UserVerification() {
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [verificationStatus, setVerificationStatus] = useState(null);
+  const [documents, setDocuments] = useState([]);
 
   useEffect(() => {
     // Fetch all users on component load
     const fetchUsers = async () => {
-      const { data, error } = await supabase.from('users').select('id, username, verified');
+      const { data, error } = await supabase.from('users').select('id, username, verified, is_tutor');
       if (error) {
         console.error('Error fetching users:', error);
       } else {
@@ -35,9 +36,27 @@ function UserVerification() {
     );
   }, [search, users]);
 
-  const handleUserSelect = (user) => {
+  const handleUserSelect = async (user) => {
     setSelectedUser(user);
     setVerificationStatus(user.verified);
+    setDocuments([]); // Clear previous documents
+
+    console.log("Selected User:", user);  // Debugging: Check selected user info
+
+    // Fetch documents for the selected tutor if they are a tutor
+    if (user.is_tutor) {
+      const { data, error } = await supabase
+        .from('tutor_documents')
+        .select('document_url')
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Error fetching documents:', error);
+      } else {
+        setDocuments(data);
+        console.log("Documents:", data);  // Debugging: Check retrieved documents
+      }
+    }
   };
 
   const handleVerificationChange = async (newStatus) => {
@@ -79,7 +98,7 @@ function UserVerification() {
               <div
                 key={user.id}
                 onClick={() => handleUserSelect(user)}
-                className={`dropdown-item ${selectedUser?.id === user.id ? 'selected' : ''}`} // Add 'selected' class if user is selected
+                className={`dropdown-item ${selectedUser?.id === user.id ? 'selected' : ''}`}
               >
                 {user.username}
               </div>
@@ -99,6 +118,26 @@ function UserVerification() {
             <option value="true">Verified</option>
             <option value="false">Not Verified</option>
           </select>
+
+          {/* Display tutor documents if the user is a tutor and has documents */}
+          {selectedUser.is_tutor && documents.length > 0 && (
+            <div className="document-section">
+              <h4>Tutor Documents:</h4>
+              <ul>
+                {documents.map((doc, index) => (
+                  <li key={index}>
+                    <a
+                      href={`https://ohkvsyqbngdukvqihemh.supabase.co/storage/v1/object/public/tutor_documents/${doc.document_url}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      View Document {index + 1}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </div>
