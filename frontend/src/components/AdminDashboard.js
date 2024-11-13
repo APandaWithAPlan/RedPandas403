@@ -26,7 +26,7 @@ function AdminDashboard() {
             <ul>
               <li><Link to="/admin/user-verification">User Verification Status</Link></li>
               <li><Link to="/admin/reported-posts">Reported Posts</Link></li>
-              <li><Link to="/admin/reported-users">Reported Users</Link></li>
+              <li><Link to="/admin/reported-users">Subject Suggestions</Link></li>
             </ul>
           </nav>
 
