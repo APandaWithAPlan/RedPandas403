@@ -15,6 +15,9 @@ import {
   Container,
   Center,
   Paper,
+  TextInput,
+  Notification,
+  Textarea
 } from '@mantine/core';
 import {
   IconMessageCircle,
@@ -24,15 +27,20 @@ import {
   IconSettings,
   IconLogin,
   IconUserPlus,
+  IconNotes,
+  IconQuestionMark
 } from '@tabler/icons-react';
 import { useUser } from './UserContext';
 import './Homepage.css';
-import pandaprofLogo from './pandaprof.png'; // Import the logo image
+import pandaprofLogo from './pandaprof.png';
 
 function Homepage() {
   const navigate = useNavigate();
   const { user, logout } = useUser();
   const [selectedCourse, setSelectedCourse] = useState(null);
+  const [showSuggestSubject, setShowSuggestSubject] = useState(false);
+  const [suggestedSubject, setSuggestedSubject] = useState('');
+  const [notification, setNotification] = useState(null);
 
   const handleLogout = () => {
     logout();
@@ -42,6 +50,20 @@ function Homepage() {
   const handleStartCall = () => {
     console.log(`Starting call for class: ${selectedCourse}`);
     navigate(`/call`, { state: { selectedCourse } });
+  };
+
+  const handleSuggestSubjectSubmit = () => {
+    if (suggestedSubject.trim() === '') {
+      alert('Please enter a subject.');
+      return;
+    }
+    // Here you can send the suggested subject to the backend or handle it as needed
+    // just display a notification for now
+    // Joseph or Nick this will be where your backend integration stuff
+    // Going to need to put the logic in Forum as well
+    setNotification(`Thank you for suggesting: ${suggestedSubject}`);
+    setSuggestedSubject('');
+    setShowSuggestSubject(false);
   };
 
   // Define subjects and courses
@@ -63,8 +85,8 @@ function Homepage() {
   // Navbar links data
   const data = [
     { link: '/forum', label: 'Forum', icon: IconMessageCircle },
-    { link: '/billing', label: 'Feature1', icon: IconReceipt2 },
-    { link: '/security', label: 'Feature2', icon: IconFingerprint },
+    /*{ link: '/billing', label: 'Feature1', icon: IconReceipt2 },
+    { link: '/security', label: 'Feature2', icon: IconFingerprint },*/
   ];
 
   // Navbar links
@@ -102,8 +124,15 @@ function Homepage() {
           <Group position="apart">
             {/* Logo and Title */}
             <Group>
-              <img src={pandaprofLogo} alt="Panda Professor Logo" width={30} height={30} />
-              <Title order={3} color="white">
+              <img
+                src={pandaprofLogo}
+                alt="Panda Professor Logo"
+                width={30}
+                height={30}
+                onClick={() => navigate('/')}
+                style={{ cursor: 'pointer' }}
+              />
+              <Title order={3} color="white" style={{ cursor: 'pointer' }} onClick={() => navigate('/')}>
                 Panda Professor
               </Title>
             </Group>
@@ -112,7 +141,56 @@ function Homepage() {
 
         <Navbar.Section grow mt="lg">
           {links}
+
+          {/* Missing Subject Button */}
+          <UnstyledButton
+            onClick={() => setShowSuggestSubject(!showSuggestSubject)}
+            sx={(theme) => ({
+              display: 'flex',
+              alignItems: 'center',
+              width: '100%',
+              padding: theme.spacing.sm,
+              borderRadius: theme.radius.sm,
+              color: theme.colors.gray[4],
+              '&:hover': {
+                backgroundColor: theme.colors.red[7],
+                color: theme.white,
+              },
+            })}
+          >
+            <ThemeIcon variant="light" color="red" size="lg">
+              <IconQuestionMark size={20} />
+            </ThemeIcon>
+            <Text size="sm" ml="md">
+              New Subject Submission
+            </Text>
+          </UnstyledButton>
+
+          {/* Suggest Subject Form */}
+          {showSuggestSubject && (
+            <Stack spacing="sm" mt="sm">
+              <Textarea
+                placeholder="Suggest a subject . . . "
+                value={suggestedSubject}
+                onChange={(e) => setSuggestedSubject(e.target.value)}
+                autosize
+                minRows={3}
+                maxRows={6}
+                sx={{
+                  textarea: {
+                    backgroundColor: '#1d1d1d',
+                    color: 'white',
+                    borderColor: '#555',
+                  },
+                }}
+              />
+              <Button color="red" onClick={handleSuggestSubjectSubmit}>
+                Submit
+              </Button>
+            </Stack>
+          )}
         </Navbar.Section>
+          
 
         {/* Settings and Logout Section */}
         <Navbar.Section>
@@ -185,6 +263,17 @@ function Homepage() {
         size="lg"
         style={{ flex: 1, backgroundColor: '#1d1d1d', color: 'white' }}
       >
+        {notification && (
+          <Notification
+            color="red"
+            title="Thank you!"
+            onClose={() => setNotification(null)}
+            sx={{ position: 'fixed', top: 20, right: 20 }}
+          >
+            {notification}
+          </Notification>
+        )}
+
         {user ? (
           <Paper
             shadow="md"
@@ -196,16 +285,12 @@ function Homepage() {
             <Title order={2} align="center" color="red" mb="md">
               Select a Subject
             </Title>
-            <Accordion
-              multiple
-              variant="separated"
-              sx={{ maxWidth: 600, margin: '0 auto' }}
-            >
+            <Accordion multiple variant="separated" sx={{ maxWidth: 600, margin: '0 auto' }}>
               {subjects.map((subject) => (
                 <Accordion.Item value={subject.name} key={subject.name}>
                   <Accordion.Control
                     style={{
-                      backgroundColor: '#1d1d1d', // Same as main content background
+                      backgroundColor: '#1d1d1d',
                       color: 'white',
                     }}
                   >
@@ -234,7 +319,7 @@ function Homepage() {
             </Accordion>
 
             {selectedCourse && (
-              <Center mt="xl">
+              <Center mt="xl" style={{ flexDirection: 'column' }}>
                 <Title order={3} align="center" mt="md">
                   Selected Class: {selectedCourse}
                 </Title>
@@ -250,7 +335,7 @@ function Homepage() {
             radius="md"
             p="xl"
             withBorder
-            style={{ backgroundColor: '#2c2c2c', color: 'white' }} // Match navbar color
+            style={{ backgroundColor: '#2c2c2c', color: 'white' }}
           >
             <Center>
               <Title order={2} align="center" color="red" mb="md">
@@ -258,8 +343,8 @@ function Homepage() {
               </Title>
             </Center>
             <Text align="center" mt="md">
-              Explore tutor experts and other educational features. Sign up now and become part
-              of our community!
+              Explore tutor experts and other educational features. Sign up now and become part of
+              our community!
             </Text>
             <Center mt="lg">
               <Button component={Link} to="/signup" color="red" size="lg">
