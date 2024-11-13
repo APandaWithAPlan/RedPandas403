@@ -1,6 +1,6 @@
 // src/components/Homepage.js
 import { Link, useNavigate } from 'react-router-dom';
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState } from 'react';
 import {
   Navbar,
   Group,
@@ -15,29 +15,32 @@ import {
   Container,
   Center,
   Paper,
+  TextInput,
   Notification,
-  Textarea,
+  Textarea
 } from '@mantine/core';
 import {
   IconMessageCircle,
+  IconReceipt2,
+  IconFingerprint,
   IconLogout,
   IconSettings,
   IconLogin,
   IconUserPlus,
-  IconQuestionMark,
+  IconNotes,
+  IconQuestionMark
 } from '@tabler/icons-react';
 import { useUser } from './UserContext';
 import './Homepage.css';
 import pandaprofLogo from './pandaprof.png';
-import { socketConnection, fetchUserMedia, createPeerConnection } from './connectionSetup.js';
-import { clientSocketListeners } from './emitAnswers.js';
-import { WebRTCContext } from '../WebRTCContext'; // Import WebRTCContext
 import { createClient } from '@supabase/supabase-js';
 
 // Initialize Supabase client
 const supabaseUrl = 'https://ohkvsyqbngdukvqihemh.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9oa3ZzeXFibmdkdWt2cWloZW1oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk3MTc5NjgsImV4cCI6MjA0NTI5Mzk2OH0.pw9Ffn_gHRr4shp9V-DgisvdqneBHeUZSmvQ61_ES5Q';
+
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
 function Homepage() {
   const navigate = useNavigate();
   const { user, logout } = useUser();
@@ -46,32 +49,14 @@ function Homepage() {
   const [suggestedSubject, setSuggestedSubject] = useState('');
   const [notification, setNotification] = useState(null);
 
-  // Use WebRTC context
-  const {
-    callStatus,
-    setCallStatus,
-    localStream,
-    setLocalStream,
-    remoteStream,
-    setRemoteStream,
-    peerConnection,
-    setPeerConnection,
-    offerData,
-    setOfferData,
-    userName,
-    setUserName,
-    typeOfCall,
-    setTypeOfCall,
-    joined,
-    setJoined,
-    availableCalls,
-    setAvailableCalls,
-    updateCallStatus,
-  } = useContext(WebRTCContext);
-
   const handleLogout = () => {
     logout();
     navigate('/');
+  };
+
+  const handleStartCall = () => {
+    console.log(`Starting call for class: ${selectedCourse}`);
+    navigate(`/call`, { state: { selectedCourse } });
   };
 
   const handleSuggestSubjectSubmit = async () => {
@@ -99,71 +84,6 @@ function Homepage() {
       setNotification('Failed to submit suggestion. Please try again.');
     }
   };
-
-  // Gets the user media
-  const initCall = async (callType) => {
-    const stream = await fetchUserMedia(callStatus, updateCallStatus);
-    setLocalStream(stream);
-    setTypeOfCall(callType);
-
-    // Create peer connection
-    const { peerConnection: newPeerConnection, remoteStream: newRemoteStream } = createPeerConnection(
-      userName,
-      callType,
-      stream
-    );
-    setPeerConnection(newPeerConnection);
-    setRemoteStream(newRemoteStream);
-  };
-
-  const handleStartCall = async () => {
-    if (!joined) {
-      setJoined(true);
-    }
-
-    if (!userName) {
-      const userNamePrompt = prompt('Enter username');
-      setUserName(userNamePrompt);
-    }
-
-    await initCall('offer');
-
-    navigate('/call', {
-      state: {
-        selectedCourse,
-      },
-    });
-  };
-
-  const answer = async (callData) => {
-    setOfferData(callData);
-
-    if (!userName) {
-      const userNamePrompt = prompt('Enter username');
-      setUserName(userNamePrompt);
-    }
-
-    await initCall('answer');
-
-    navigate('/answer', {
-      state: {
-        selectedCourse,
-      },
-    });
-  };
-
-  // Starts after user clicks the "Start Call" button
-  useEffect(() => {
-    if (joined && userName) {
-      const setCalls = (data) => {
-        setAvailableCalls(data);
-        console.log(data);
-      };
-      const socket = socketConnection(userName);
-      socket.on('availableOffers', setCalls);
-      socket.on('newOfferWaiting', setCalls);
-    }
-  }, [joined, userName, setAvailableCalls]);
 
   // Define subjects and courses
   const subjects = [
@@ -424,23 +344,6 @@ function Homepage() {
                 </Button>
               </Center>
             )}
-
-            <Center mt="xl" style={{ flexDirection: 'column' }}>
-              <Title order={3} align="center" mt="md">
-                Available Calls
-              </Title>
-              {availableCalls.map((callData, i) => (
-                <Button
-                  key={i}
-                  mt="md"
-                  color="yellow"
-                  onClick={() => answer(callData)}
-                  fullWidth
-                >
-                  Answer Call From {callData.offererUserName}
-                </Button>
-              ))}
-            </Center>
           </Paper>
         ) : (
           <Paper
