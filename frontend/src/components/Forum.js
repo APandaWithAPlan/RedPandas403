@@ -75,7 +75,8 @@ function Forum() {
       alert('Please enter a subject.');
       return;
     }
-    // Handle submission (e.g., send to backend)
+    // Handle submission
+    // Joseph and Nick Db stuff here again
     setNotification(`Thank you for suggesting: ${suggestedSubject}`);
     setSuggestedSubject('');
     setShowSuggestSubject(false);
