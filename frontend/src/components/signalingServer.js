@@ -1,6 +1,6 @@
 // Dependencies
-const fs = require('fs');
-const https = require('https');
+//const fs = require('fs');
+//const https = require('https');
 const http = require('http');
 const express = require('express');
 const socketio = require('socket.io');
@@ -9,16 +9,21 @@ const port = 3000;
 app.use(express.static(__dirname));
 
 // HTTPS keys needed 
-const serverAccess = {
-    key: fs.readFileSync('cert.key'),                  // TODO: find the actual file names
-    cert: fs.readFileSync('cert.crt')
-};
+//const serverAccess = {
+//    key: fs.readFileSync('cert.key'),                  // TODO: find the actual file names
+//    cert: fs.readFileSync('cert.crt')
+//};
+
+// Testing 
+app.get('/ping', (req, res) => {
+    res.status(200).send('Ping received!');
+});
 
 // Servers
-const expressServer = http.createServer(serverAccess, app);
+const expressServer = http.createServer(app);
 const io = socketio(expressServer, {
         cors : {
-            origin: ["http://localhost"],
+            origin: "http://localhost:3000",
             methods: ["GET", "POST"]
         }
     }
@@ -33,6 +38,8 @@ expressServer.listen(port);
 
 // handle connection events
 io.on('connection', (socket) => {
+    console.log("We have a connection to the signaling server")
+
     // pull authentication from connectionSetup
     const userName = socket.handshake.auth.userName;
     const password = socket.handshake.auth.password;
@@ -48,6 +55,7 @@ io.on('connection', (socket) => {
         socketId: socket.id,
         userName
     })
+    console.log("Pushed client socket id to clientsConnected")
 
     // emit any available offers
     if (offers.length){
@@ -56,6 +64,7 @@ io.on('connection', (socket) => {
 
     // push any offers to the callee
     socket.on('newOffer', (newOffer) =>{
+        console.log("Signaling server received an ice candidate. Broadcasting...")
         offers.push({
             offererUserName: userName,
             offer: newOffer,
