@@ -17,7 +17,7 @@ const socketConnection = (userName) => {
     }else {
         socket = io.connect('http://localhost:3000/', {
             auth: {
-                userName: "bbays2024",
+                userName,
                 password: "softwaredesign"
             }
         });
@@ -52,14 +52,22 @@ const fetchUserMedia = (callStatus, updateCallStatus, setLocalStream) => {
     return new Promise(async(resolve, reject) => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({audio: true, video: true});
+            console.log("Obtained user media from fetchUserMedia in connectionSetup.js")
             const copyCallStatus = {...callStatus}
+            console.log("CopyCallStatus was initiated")
             copyCallStatus.haveMedia = true //signals to the app that we have media
+            console.log("copyCallStatus was set to true")
             copyCallStatus.videoEnabled = null //init both to false, you can init to true
+            console.log("Video was set to null")
             copyCallStatus.audioEnabled = false
+            console.log("Audio was set to false")
             updateCallStatus(copyCallStatus)
+            console.log("Updated call")
             setLocalStream(stream)
+            console.log("Set the stream")
             resolve();
         } catch(err) {
+            console.log("Did not return promise from fetchUserMedia in connectionSetup.js")
             console.log(err);
             reject();
         }

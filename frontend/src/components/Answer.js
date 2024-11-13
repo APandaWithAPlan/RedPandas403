@@ -57,10 +57,10 @@ const AnswerVideo = ({remoteStream, localStream,peerConnection,
             })
         }
 
-        if(!answerCreated && callStatus.videoEnabled){
+        if(!answerCreated /*&& callStatus.videoEnabled*/){
             addOfferAndCreateAnswerAsync()
         }
-    },[callStatus.videoEnabled,answerCreated])
+    },[answerCreated])
 
     // Placeholder functions for button actions
     const toggleMic = () => {

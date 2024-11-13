@@ -26,12 +26,16 @@ const Call = ({remoteStream, localStream,peerConnection,callStatus,updateCallSta
     //send back to home if no localStream
     useEffect(()=>{
         if(!localStream){
+            console.log("No local stream OR no peer connection, call.js")
             navigate(`/`)
         }else{
             //set video tags
             remoteFeedEl.current.srcObject = remoteStream
-            localFeedEl.current.srcObject = localStream            
+            console.log("Remote stream was set in the box")
+            localFeedEl.current.srcObject = localStream
+            console.log("Local stream was set in the box")
         }
+    // this code is dependent on having values for both of these
     },[])
     
     //set video tags
@@ -44,20 +48,22 @@ const Call = ({remoteStream, localStream,peerConnection,callStatus,updateCallSta
     useEffect(()=>{
         const shareVideoAsync = async()=>{
             const offer = await peerConnection.createOffer()
+            console.log("Offer was created! Call.js")
             peerConnection.setLocalDescription(offer)
             //we can now start collecing ice candidates!
             // we need to emit the offer to the server
             const socket = socketConnection(userName)
             socket.emit('newOffer',offer)
+            console.log(offer)
             setOfferCreated(true) //so that our useEffect doesn't make an offer again
             console.log("created offer, setLocalDesc, emitted offer, updated videoMessage")
         }
-        if(!offerCreated && callStatus.videoEnabled){
+        if(!offerCreated){
             //CREATE AN OFFER!!
             console.log("We have video and no offer... making offer")
             shareVideoAsync()
         }
-    },[callStatus.videoEnabled,offerCreated])
+    },[offerCreated])
     
 
     useEffect(()=>{
@@ -70,6 +76,7 @@ const Call = ({remoteStream, localStream,peerConnection,callStatus,updateCallSta
         }
     },[callStatus])
 
+
     // Placeholder functions for button actions
     const toggleMic = () => {
     setIsMicOn(!isMicOn);
@@ -77,8 +84,35 @@ const Call = ({remoteStream, localStream,peerConnection,callStatus,updateCallSta
     };
 
     const toggleCamera = () => {
-        setIsCameraOn(!isCameraOn);
-        // Add WebRTC code to handle camera toggle
+        const copyCallStatus = {...callStatus}
+        // useCases:
+        if(copyCallStatus.videoEnabled){
+            // 1. Video is enabled, so we need to disable
+            //disable
+            copyCallStatus.videoEnabled = false
+            updateCallStatus(copyCallStatus)
+            const tracks = localStream.getVideoTracks()
+            tracks.forEach(track=>track.enabled = false)
+
+        }else if(copyCallStatus.videoEnabled === false){
+            // 2. Video is disabled, so we need to enable
+            copyCallStatus.videoEnabled = true
+            updateCallStatus(copyCallStatus)
+            const tracks = localStream.getVideoTracks()
+            tracks.forEach(track=>track.enabled = true)
+
+        }else if(copyCallStatus.videoEnabled === null){
+            // 3. Video is null, so we need to init
+            console.log("Init video!")
+            copyCallStatus.videoEnabled = true
+            updateCallStatus(copyCallStatus)
+            // we are not adding tracks so they are visible 
+            // in the video tag. We are addign them
+            // to the PC, so they can be sent
+            localStream.getTracks().forEach(track=>{
+                peerConnection.addTrack(track,localStream)
+            })
+        }
     };
 
     const sendMessage = () => {
@@ -180,4 +214,4 @@ const Call = ({remoteStream, localStream,peerConnection,callStatus,updateCallSta
     );
 };
 
-    export default Call;
+export default Call;

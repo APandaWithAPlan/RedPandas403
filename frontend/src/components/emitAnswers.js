@@ -1,10 +1,12 @@
 const clientSocketListeners = (socket, typeOfCall, callStatus, updateCallStatus,peerConnection)=>{
+    console.log("emitAnswers.js -> clientSocketListeners: Listing for other stuff")
     socket.on('answerResponse',entireOfferObj=>{
-        console.log(entireOfferObj);
+        console.log("Received answerResponse");
         const copyCallStatus = {...callStatus}
         copyCallStatus.answer = entireOfferObj.answer
         copyCallStatus.myRole = typeOfCall
         updateCallStatus(copyCallStatus)
+        console.log("Copied and updated updateCallStatus")
     })
 
     // we got an ice candidate, let's add it to peerConnection

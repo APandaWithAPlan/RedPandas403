@@ -72,7 +72,7 @@ function App() {
             <Route path="/question/:id" element={<QuestionPage />} />
             <Route path="/admin/*" element={<AdminDashboard />} />
             <Route path="/profile" element={<Profile />} />
-            <Route path="/call" element={
+            <Route path="/offer" element={
                 <Call 
                     callStatus={callStatus} 
                     updateCallStatus={updateCallStatus} 

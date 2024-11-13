@@ -31,9 +31,9 @@ import pandaprofLogo from './pandaprof.png'; // Import the logo image
 import { socketConnection, fetchUserMedia, createPeerConnection } from './connectionSetup.js';
 import { clientSocketListeners } from './emitAnswers.js';
 
-const Homepage = (callStatus, updateCallStatus, localStream, 
+const Homepage = ({callStatus, updateCallStatus, localStream, 
   setLocalStream, remoteStream, setRemoteStream, peerConnection, 
-  setPeerConnection, offerData, setOfferData, userName, setUserName) => {
+  setPeerConnection, offerData, setOfferData, userName, setUserName}) => {
 
   // webRTC tracking states
   const [ typeOfCall, setTypeOfCall ] = useState()
@@ -49,13 +49,14 @@ const Homepage = (callStatus, updateCallStatus, localStream,
     if(joined){
         const userName = prompt("Enter username")
         setUserName(userName)
+        console.log("Username successfully set")
         const setCalls = data=>{
             setAvailableCalls(data)
             console.log(data)
         }
         const socket = socketConnection(userName)
         socket.on('availableOffers',setCalls)
-        socket.on('newOfferWaiting',setCalls)
+        socket.on('newOfferAwaiting',setCalls)
     }
   },[joined])
 
@@ -63,9 +64,11 @@ const Homepage = (callStatus, updateCallStatus, localStream,
   useEffect(()=>{
     if(callStatus.haveMedia && !peerConnection){
         // we have media, now we need a connection
+        console.log("We have media, but not a peer connection. Let's create one (homepage.js)")
         const { peerConnection, remoteStream } = createPeerConnection(userName,typeOfCall)
         setPeerConnection(peerConnection)
         setRemoteStream(remoteStream)
+        console.log("Remote stream is set, and the peer connection is set")
     }
   },[callStatus.haveMedia])
 
@@ -73,6 +76,7 @@ const Homepage = (callStatus, updateCallStatus, localStream,
   // candidates and offers to come in. We'll handle them here
   useEffect(()=>{
     if(typeOfCall && peerConnection){
+        console.log("We have values for typeOfCall and peerConnection. Building socketConnection now.")
         const socket = socketConnection(userName)
         clientSocketListeners(socket,typeOfCall,callStatus, updateCallStatus,peerConnection)
     }
@@ -82,13 +86,14 @@ const Homepage = (callStatus, updateCallStatus, localStream,
   useEffect(()=>{
     if(remoteStream && peerConnection){
         console.log(`Starting call for class: ${selectedCourse}`);
-        navigate(`/${typeOfCall}?token=${Math.random()}`, { state: { selectedCourse } });
+        navigate(`/${typeOfCall}`, { state: { selectedCourse } });
     }
   },[remoteStream,peerConnection])
 
   // gets the user media
   const initCall = async(typeOfCall) => {
     await fetchUserMedia(callStatus, updateCallStatus, setLocalStream)
+    console.log("Returned promise successfully in initCall (homepage.js)")
     setTypeOfCall(typeOfCall)
   }
 
@@ -96,8 +101,10 @@ const Homepage = (callStatus, updateCallStatus, localStream,
     //call related stuff goes here
     if (!joined) {
         setJoined(true);
+        console.log("Joined was set to 'true' ")
     }
     initCall('offer');
+    console.log("Starting initCall (homepage.js) ")
   }
 
   const answer = (callData)=>{
@@ -320,16 +327,16 @@ const Homepage = (callStatus, updateCallStatus, localStream,
                   Available Calls
                 </Title>
                 {availableCalls.map((callData, i) => (
-                <Button
-                    key={i}
-                    mt="md"
-                    color="yellow"
-                    onClick={() => answer(callData)}
-                    fullWidth
-                >
-                Answer Call From {callData.offererUserName}
-                </Button>
-  ))}
+                    <Button
+                        key={i}
+                        mt="md"
+                        color="yellow"
+                        onClick={() => answer(callData)}
+                        fullWidth
+                    >
+                    Answer Call From {callData.offererUserName}
+                    </Button>
+                ))}
 </Center>
           </Paper>
         ) : (
